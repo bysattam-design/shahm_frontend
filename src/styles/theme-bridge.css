@@ -1,0 +1,579 @@
+/* =============================================================
+   THE BRIDGE
+
+   Every dashboard screen was written against its own palette:
+   --cnt-* on contact, --ca-* on about, --msg-* on messages, and so
+   on for fifteen screens and some six hundred variables.
+
+   Rewriting all of them at once would be a change nobody could
+   review. Instead each screen's colour variables are pointed at the
+   theme here, one block per screen, so a screen follows the day and
+   the evening without a line of its own stylesheet changing.
+
+   The selectors carry :root only to outrank the screen's own
+   declaration whatever order the bundler puts them in. Nothing else
+   is added: sizes, spacing and layout stay where they were.
+
+   A screen leaves this file when it is migrated properly, the way
+   the shell and the form layer already were.
+============================================================= */
+
+
+/* src/styles/dashboard/appointments.css */
+:root .appt-root, :root .appt-section-content {
+  --appt-primary: var(--t-ink);
+  --appt-secondary: var(--t-ink-secondary);
+  --appt-muted: var(--t-ink-muted);
+  --appt-border: var(--t-border);
+  --appt-bg: var(--t-ground);
+  --appt-surface: var(--t-surface);
+  --appt-radius-card: var(--t-radius-card);
+  --appt-radius-btn: var(--t-radius-control);
+  --appt-radius-input: var(--t-radius-control);
+  --appt-shadow-card: var(--t-shadow-card);
+  --appt-shadow-hover: var(--t-shadow-raised);
+  --appt-blue: var(--t-info);
+  --appt-blue-bg: var(--t-info-soft);
+  --appt-green: var(--t-success);
+  --appt-green-bg: var(--t-success-soft);
+  --appt-amber: var(--t-warning);
+  --appt-amber-bg: var(--t-warning-soft);
+  --appt-red: var(--t-danger);
+  --appt-red-bg: var(--t-danger-soft);
+  --appt-purple: var(--t-accent);
+  --appt-purple-bg: var(--t-accent-soft);
+  --appt-teal: var(--t-success);
+  --appt-teal-bg: var(--t-success-soft);
+}
+
+/* src/styles/dashboard/cms/about.css */
+:root .ca-root {
+  --ca-primary: var(--t-ink);
+  --ca-secondary: var(--t-ink-secondary);
+  --ca-muted: var(--t-ink-muted);
+  --ca-border: var(--t-border);
+  --ca-border-hover: var(--t-border-strong);
+  --ca-surface: var(--t-surface);
+  --ca-surface-subtle: var(--t-surface-sunk);
+  --ca-surface-hover: var(--t-hover);
+  --ca-bg: var(--t-ground);
+  --ca-radius-sm: var(--t-radius-small);
+  --ca-radius-md: var(--t-radius-card);
+  --ca-radius-lg: var(--t-radius-panel);
+  --ca-shadow-card: var(--t-shadow-card);
+  --ca-shadow-hover: var(--t-shadow-raised);
+  --ca-blue: var(--t-info);
+  --ca-blue-bg: var(--t-info-soft);
+  --ca-blue-border: var(--t-info-soft);
+  --ca-green: var(--t-success);
+  --ca-green-bg: var(--t-success-soft);
+  --ca-green-border: var(--t-success-soft);
+  --ca-amber: var(--t-warning);
+  --ca-amber-bg: var(--t-warning-soft);
+  --ca-amber-border: var(--t-warning-soft);
+  --ca-teal: var(--t-success);
+  --ca-teal-bg: var(--t-success-soft);
+  --ca-teal-border: var(--t-success-soft);
+  --ca-purple: var(--t-accent);
+  --ca-purple-bg: var(--t-accent-soft);
+  --ca-purple-border: var(--t-accent-soft);
+  --ca-red: var(--t-danger);
+  --ca-red-bg: var(--t-danger-soft);
+  --ca-red-border: var(--t-danger-border);
+}
+
+/* src/styles/dashboard/cms/blog.css */
+:root .cms-blog-root {
+  --cb-primary: var(--t-ink);
+  --cb-secondary: var(--t-ink-secondary);
+  --cb-muted: var(--t-ink-muted);
+  --cb-border: var(--t-border);
+  --cb-border-hover: var(--t-border-strong);
+  --cb-surface: var(--t-surface);
+  --cb-surface-subtle: var(--t-surface-sunk);
+  --cb-surface-hover: var(--t-hover);
+  --cb-radius-sm: var(--t-radius-small);
+  --cb-radius-md: var(--t-radius-card);
+  --cb-radius-lg: var(--t-radius-panel);
+  --cb-shadow-card: var(--t-shadow-card);
+}
+
+/* src/styles/dashboard/cms/faq.css */
+:root .faq-dashboard {
+  --faq-primary: var(--t-ink);
+  --faq-secondary: var(--t-ink-secondary);
+  --faq-border: var(--t-border);
+  --faq-bg: var(--t-ground);
+  --faq-radius-card: var(--t-radius-card);
+  --faq-radius-input: var(--t-radius-control);
+  --faq-radius-btn: var(--t-radius-control);
+  --faq-shadow-card: var(--t-shadow-card);
+  --faq-shadow-hover: var(--t-shadow-raised);
+  --faq-blue: var(--t-info);
+  --faq-blue-bg: var(--t-info-soft);
+  --faq-green: var(--t-success);
+  --faq-green-bg: var(--t-success-soft);
+  --faq-amber: var(--t-warning);
+  --faq-amber-bg: var(--t-warning-soft);
+  --faq-red: var(--t-danger);
+  --faq-red-bg: var(--t-danger-soft);
+  --faq-purple: var(--t-accent);
+  --faq-purple-bg: var(--t-accent-soft);
+}
+
+/* src/styles/dashboard/cms/footer.css */
+:root .cms-footer-root {
+  --cf-primary: var(--t-ink);
+  --cf-secondary: var(--t-ink-secondary);
+  --cf-muted: var(--t-ink-muted);
+  --cf-border: var(--t-border);
+  --cf-border-hover: var(--t-border-strong);
+  --cf-surface: var(--t-surface);
+  --cf-surface-subtle: var(--t-surface-sunk);
+  --cf-surface-hover: var(--t-hover);
+  --cf-radius-sm: var(--t-radius-small);
+  --cf-radius-md: var(--t-radius-card);
+  --cf-radius-lg: var(--t-radius-panel);
+  --cf-shadow-card: var(--t-shadow-card);
+}
+
+/* src/styles/dashboard/cms/header.css */
+:root .cms-header-root {
+  --ch-primary: var(--t-ink);
+  --ch-secondary: var(--t-ink-secondary);
+  --ch-muted: var(--t-ink-muted);
+  --ch-border: var(--t-border);
+  --ch-border-hover: var(--t-border-strong);
+  --ch-surface: var(--t-surface);
+  --ch-surface-subtle: var(--t-surface-sunk);
+  --ch-surface-hover: var(--t-hover);
+  --ch-radius-sm: var(--t-radius-small);
+  --ch-radius-md: var(--t-radius-card);
+  --ch-radius-lg: var(--t-radius-panel);
+  --ch-shadow-card: var(--t-shadow-card);
+  --ch-shadow-hover: var(--t-shadow-raised);
+}
+
+/* src/styles/dashboard/cms/legal.css */
+:root .cl-root {
+  --cl-primary: var(--t-ink);
+  --cl-secondary: var(--t-ink-secondary);
+  --cl-muted: var(--t-ink-muted);
+  --cl-border: var(--t-border);
+  --cl-border-hover: var(--t-border-strong);
+  --cl-surface: var(--t-surface);
+  --cl-bg: var(--t-ground);
+  --cl-surface-subtle: var(--t-surface-sunk);
+  --cl-surface-hover: var(--t-hover);
+  --cl-radius-card: var(--t-radius-card);
+  --cl-radius-md: var(--t-radius-card);
+  --cl-radius-sm: var(--t-radius-small);
+  --cl-shadow-card: var(--t-shadow-card);
+  --cl-shadow-hover: var(--t-shadow-raised);
+  --cl-blue: var(--t-info);
+  --cl-blue-bg: var(--t-info-soft);
+  --cl-green: var(--t-success);
+  --cl-green-bg: var(--t-success-soft);
+  --cl-red: var(--t-danger);
+  --cl-red-bg: var(--t-danger-soft);
+  --cl-purple: var(--t-accent);
+  --cl-purple-bg: var(--t-accent-soft);
+  --cl-amber: var(--t-warning);
+  --cl-amber-bg: var(--t-warning-soft);
+}
+
+/* src/styles/dashboard/cms/site-settings.css */
+:root .ss-root {
+  --ss-primary: var(--t-ink);
+  --ss-secondary: var(--t-ink-secondary);
+  --ss-muted: var(--t-ink-muted);
+  --ss-border: var(--t-border);
+  --ss-border-hover: var(--t-border-strong);
+  --ss-surface: var(--t-surface);
+  --ss-bg: var(--t-ground);
+  --ss-surface-subtle: var(--t-surface-sunk);
+  --ss-surface-hover: var(--t-hover);
+  --ss-radius-card: var(--t-radius-card);
+  --ss-radius-sm: var(--t-radius-small);
+  --ss-shadow-card: var(--t-shadow-card);
+  --ss-shadow-hover: var(--t-shadow-raised);
+  --ss-blue: var(--t-info);
+  --ss-blue-bg: var(--t-info-soft);
+  --ss-green: var(--t-success);
+  --ss-green-bg: var(--t-success-soft);
+  --ss-red: var(--t-danger);
+  --ss-red-bg: var(--t-danger-soft);
+  --ss-purple: var(--t-accent);
+  --ss-purple-bg: var(--t-accent-soft);
+  --ss-amber: var(--t-warning);
+  --ss-amber-bg: var(--t-warning-soft);
+}
+
+/* src/styles/dashboard/cms/users.css */
+:root .du-root {
+  --du-primary: var(--t-ink);
+  --du-secondary: var(--t-ink-secondary);
+  --du-muted: var(--t-ink-muted);
+  --du-border: var(--t-border);
+  --du-bg: var(--t-ground);
+  --du-surface: var(--t-surface);
+  --du-radius-card: var(--t-radius-card);
+  --du-radius-btn: var(--t-radius-control);
+  --du-radius-input: var(--t-radius-control);
+  --du-shadow-card: var(--t-shadow-card);
+  --du-shadow-hover: var(--t-shadow-raised);
+}
+
+/* src/styles/dashboard/contact.css */
+:root .cnt-root, :root .cnt-section-content {
+  --cnt-primary: var(--t-ink);
+  --cnt-secondary: var(--t-ink-secondary);
+  --cnt-muted: var(--t-ink-muted);
+  --cnt-border: var(--t-border);
+  --cnt-bg: var(--t-ground);
+  --cnt-surface: var(--t-surface);
+  --cnt-radius-card: var(--t-radius-card);
+  --cnt-radius-btn: var(--t-radius-control);
+  --cnt-radius-input: var(--t-radius-control);
+  --cnt-shadow-card: var(--t-shadow-card);
+  --cnt-shadow-hover: var(--t-shadow-raised);
+  --cnt-blue: var(--t-info);
+  --cnt-blue-bg: var(--t-info-soft);
+  --cnt-green: var(--t-success);
+  --cnt-green-bg: var(--t-success-soft);
+  --cnt-amber: var(--t-warning);
+  --cnt-amber-bg: var(--t-warning-soft);
+  --cnt-red: var(--t-danger);
+  --cnt-red-bg: var(--t-danger-soft);
+  --cnt-purple: var(--t-accent);
+  --cnt-purple-bg: var(--t-accent-soft);
+  --cnt-teal: var(--t-success);
+  --cnt-teal-bg: var(--t-success-soft);
+}
+
+/* src/styles/dashboard/email-settings.css */
+:root .es-root {
+  --es-primary: var(--t-ink);
+  --es-secondary: var(--t-ink-secondary);
+  --es-muted: var(--t-ink-muted);
+  --es-border: var(--t-border);
+  --es-border-hover: var(--t-border-strong);
+  --es-surface: var(--t-surface);
+  --es-bg: var(--t-ground);
+  --es-surface-subtle: var(--t-surface-sunk);
+  --es-radius-card: var(--t-radius-card);
+  --es-radius-md: var(--t-radius-card);
+  --es-radius-sm: var(--t-radius-small);
+  --es-shadow-card: var(--t-shadow-card);
+  --es-shadow-hover: var(--t-shadow-raised);
+  --es-blue: var(--t-info);
+  --es-blue-bg: var(--t-info-soft);
+  --es-green: var(--t-success);
+  --es-green-bg: var(--t-success-soft);
+  --es-red: var(--t-danger);
+  --es-red-bg: var(--t-danger-soft);
+  --es-purple: var(--t-accent);
+  --es-purple-bg: var(--t-accent-soft);
+  --es-amber: var(--t-warning);
+  --es-amber-bg: var(--t-warning-soft);
+}
+
+/* src/styles/dashboard/email-templates.css */
+:root .et-root {
+  --et-primary: var(--t-ink);
+  --et-secondary: var(--t-ink-secondary);
+  --et-muted: var(--t-ink-muted);
+  --et-border: var(--t-border);
+  --et-border-hover: var(--t-border-strong);
+  --et-surface: var(--t-surface);
+  --et-bg: var(--t-ground);
+  --et-surface-subtle: var(--t-surface-sunk);
+  --et-radius-card: var(--t-radius-card);
+  --et-radius-sm: var(--t-radius-small);
+  --et-shadow-card: var(--t-shadow-card);
+  --et-shadow-hover: var(--t-shadow-raised);
+  --et-blue: var(--t-info);
+  --et-blue-bg: var(--t-info-soft);
+  --et-green: var(--t-success);
+  --et-green-bg: var(--t-success-soft);
+  --et-red: var(--t-danger);
+  --et-red-bg: var(--t-danger-soft);
+  --et-purple: var(--t-accent);
+  --et-purple-bg: var(--t-accent-soft);
+  --et-amber: var(--t-warning);
+  --et-amber-bg: var(--t-warning-soft);
+}
+
+/* src/styles/dashboard/messages.css */
+:root .msg-dashboard {
+  --msg-primary: var(--t-ink);
+  --msg-secondary: var(--t-ink-secondary);
+  --msg-border: var(--t-border);
+  --msg-bg: var(--t-ground);
+  --msg-radius-card: var(--t-radius-card);
+  --msg-radius-input: var(--t-radius-control);
+  --msg-radius-btn: var(--t-radius-control);
+  --msg-shadow-card: var(--t-shadow-card);
+  --msg-shadow-hover: var(--t-shadow-raised);
+  --msg-blue: var(--t-info);
+  --msg-blue-bg: var(--t-info-soft);
+  --msg-green: var(--t-success);
+  --msg-green-bg: var(--t-success-soft);
+  --msg-amber: var(--t-warning);
+  --msg-amber-bg: var(--t-warning-soft);
+  --msg-red: var(--t-danger);
+  --msg-red-bg: var(--t-danger-soft);
+  --msg-purple: var(--t-accent);
+  --msg-purple-bg: var(--t-accent-soft);
+  --msg-teal: var(--t-success);
+  --msg-teal-bg: var(--t-success-soft);
+}
+
+/* src/styles/dashboard/services.css */
+:root .cms-services-root, :root .cms-services-content {
+  --svc-primary: var(--t-ink);
+  --svc-secondary: var(--t-ink-secondary);
+  --svc-muted: var(--t-ink-muted);
+  --svc-border: var(--t-border);
+  --svc-border-hover: var(--t-border-strong);
+  --svc-surface: var(--t-surface);
+  --svc-bg: var(--t-ground);
+  --svc-radius-card: var(--t-radius-card);
+  --svc-radius-md: var(--t-radius-card);
+  --svc-radius-sm: var(--t-radius-small);
+  --svc-shadow-card: var(--t-shadow-card);
+  --svc-shadow-hover: var(--t-shadow-raised);
+  --svc-blue: var(--t-info);
+  --svc-blue-bg: var(--t-info-soft);
+  --svc-green: var(--t-success);
+  --svc-green-bg: var(--t-success-soft);
+  --svc-red: var(--t-danger);
+  --svc-red-bg: var(--t-danger-soft);
+  --svc-purple: var(--t-accent);
+  --svc-purple-bg: var(--t-accent-soft);
+  --svc-amber: var(--t-warning);
+  --svc-amber-bg: var(--t-warning-soft);
+  --svc-teal: var(--t-success);
+  --svc-teal-bg: var(--t-success-soft);
+}
+
+/* src/styles/dashboard/cms/hero.css — its prefix is two words, --cms-hero-* */
+:root .cms-hero-theme {
+  --cms-hero-primary: var(--t-ink);
+  --cms-hero-secondary: var(--t-ink-secondary);
+  --cms-hero-muted: var(--t-ink-muted);
+  --cms-hero-border: var(--t-border);
+  --cms-hero-border-hover: var(--t-border-strong);
+  --cms-hero-surface: var(--t-surface);
+  --cms-hero-bg: var(--t-ground);
+  --cms-hero-surface-subtle: var(--t-surface-sunk);
+  --cms-hero-radius-card: var(--t-radius-card);
+  --cms-hero-radius-sm: var(--t-radius-small);
+  --cms-hero-shadow-card: var(--t-shadow-card);
+  --cms-hero-shadow-hover: var(--t-shadow-raised);
+}
+
+
+/* =============================================================
+   FILLED WITH THE INK COLOUR
+
+   Several screens use their --*-primary token twice over: as the
+   colour of text, and as the fill of a solid button or an icon chip.
+   Pointed at the theme, that token turns white in the evening — and a
+   white button with white text is an invisible button.
+
+   These are the rules that fill with it. Their label takes the
+   ground colour instead, so the button reads dark on light by day and
+   light on dark in the evening, which is what a solid button should
+   do at either end.
+============================================================= */
+
+
+/* src/styles/dashboard/appointments.css */
+:root .appt-btn--primary {
+  color: var(--t-ground);
+}
+:root .appt-cal-day--today .appt-cal-day-num {
+  color: var(--t-ground);
+}
+:root .appt-cal-day-badge {
+  color: var(--t-ground);
+}
+:root .appt-cal-nav-btn:hover {
+  color: var(--t-ground);
+}
+:root .appt-page-header-icon {
+  color: var(--t-ground);
+}
+:root .appt-view-btn--active {
+  color: var(--t-ground);
+}
+:root /* Sliding indicator */ .appt-tabs-indicator {
+  color: var(--t-ground);
+}
+
+/* src/styles/dashboard/cms/about.css */
+:root .ca-btn--preview-active {
+  color: var(--t-ground);
+}
+:root .ca-btn--primary {
+  color: var(--t-ground);
+}
+:root .ca-page-header-icon {
+  color: var(--t-ground);
+}
+:root .ca-preview-header {
+  color: var(--t-ground);
+}
+:root .ca-section-number {
+  color: var(--t-ground);
+}
+:root .ca-tab--active {
+  color: var(--t-ground);
+}
+
+/* src/styles/dashboard/cms/blog.css */
+:root .cms-blog-tab::after {
+  color: var(--t-ground);
+}
+:root .cms-blog-tag-chip--active {
+  color: var(--t-ground);
+}
+:root /* ── Primary ── */ .cms-blog-btn-primary {
+  color: var(--t-ground);
+}
+
+/* src/styles/dashboard/cms/faq.css */
+:root .faq-btn--primary {
+  color: var(--t-ground);
+}
+:root .faq-page-header-icon {
+  color: var(--t-ground);
+}
+:root .faq-tab-btn--active {
+  color: var(--t-ground);
+}
+
+/* src/styles/dashboard/cms/footer.css */
+:root .cms-footer-tab::after {
+  color: var(--t-ground);
+}
+:root /* ── Primary button (dark fill — like quick-access-button) ── */ .cms-footer-btn-primary {
+  color: var(--t-ground);
+}
+
+/* src/styles/dashboard/cms/header.css */
+:root .cms-header-page-header-icon {
+  color: var(--t-ground);
+}
+:root .cms-header-tabs-indicator {
+  color: var(--t-ground);
+}
+:root /* ── Primary ── */ .cms-header-btn-primary {
+  color: var(--t-ground);
+}
+:root /* ── Upload button ── */ .cms-header-btn-upload {
+  color: var(--t-ground);
+}
+
+/* src/styles/dashboard/cms/hero.css */
+:root .cms-hero-btn--primary {
+  color: var(--t-ground);
+}
+:root .cms-hero-page-header-icon {
+  color: var(--t-ground);
+}
+
+/* src/styles/dashboard/cms/legal.css */
+:root .cl-btn--primary {
+  color: var(--t-ground);
+}
+:root .cl-page-header-icon {
+  color: var(--t-ground);
+}
+:root .cl-section-number {
+  color: var(--t-ground);
+}
+
+/* src/styles/dashboard/cms/site-settings.css */
+:root .ss-btn--primary {
+  color: var(--t-ground);
+}
+:root .ss-page-header-icon {
+  color: var(--t-ground);
+}
+
+/* src/styles/dashboard/cms/users.css */
+:root .du-btn--primary {
+  color: var(--t-ground);
+}
+:root .du-page-header-icon {
+  color: var(--t-ground);
+}
+:root /* ── Add button ─────────────────────────────────────────────── */ .du-btn-add {
+  color: var(--t-ground);
+}
+
+/* src/styles/dashboard/contact.css */
+:root .cnt-btn--primary {
+  color: var(--t-ground);
+}
+:root .cnt-page-header-icon {
+  color: var(--t-ground);
+}
+:root .cnt-tabs-indicator {
+  color: var(--t-ground);
+}
+
+/* src/styles/dashboard/email-settings.css */
+:root .es-page-header-icon {
+  color: var(--t-ground);
+}
+:root /* Primary — save */ .es-btn--primary {
+  color: var(--t-ground);
+}
+
+/* src/styles/dashboard/email-templates.css */
+:root .et-btn--primary {
+  color: var(--t-ground);
+}
+:root .et-page-header-icon {
+  color: var(--t-ground);
+}
+:root .et-tab-btn--active {
+  color: var(--t-ground);
+}
+
+/* src/styles/dashboard/messages.css */
+:root .msg-btn--export:hover {
+  color: var(--t-ground);
+}
+:root .msg-btn--primary {
+  color: var(--t-ground);
+}
+:root .msg-btn-back:hover {
+  color: var(--t-ground);
+}
+:root .msg-page-header-icon {
+  color: var(--t-ground);
+}
+:root .msg-pagination-btn:hover:not(:disabled) {
+  color: var(--t-ground);
+}
+
+/* src/styles/dashboard/services.css */
+:root .cms-services-btn--primary {
+  color: var(--t-ground);
+}
+:root .cms-services-content-header-icon {
+  color: var(--t-ground);
+}
+:root .cms-services-media-type-btn--active {
+  color: var(--t-ground);
+}
+:root .cms-services-page-header-icon {
+  color: var(--t-ground);
+}
+:root .cms-services-tab-btn--active {
+  color: var(--t-ground);
+}
