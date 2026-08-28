@@ -276,3 +276,22 @@
   line-height: 1.7;
   color: var(--sf-muted);
 }
+
+/* A control the reader may not use, and the reason beside it. Greyed rather
+   than hidden: a button nobody can see teaches nobody that the act exists. */
+.sf-denied {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.sf-denied > :first-child {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.sf-denied__why {
+  font-size: 12px;
+  color: var(--sf-muted);
+  white-space: nowrap;
+}

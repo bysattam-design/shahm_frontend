@@ -61,13 +61,40 @@ afterEach(() => {
 
 describe("who may do what", () => {
   test("a role holds only what its rank reaches", () => {
-    expect(roleCan("viewer", "messages.read")).toBe(true);
+    expect(roleCan("viewer", "dashboard.view")).toBe(true);
     expect(roleCan("viewer", "content.edit")).toBe(false);
     expect(roleCan("editor", "content.edit")).toBe(true);
     expect(roleCan("editor", "users.manage")).toBe(false);
     expect(roleCan("admin", "users.manage")).toBe(true);
     expect(roleCan("admin", "integrations.manage")).toBe(false);
     expect(roleCan("super_admin", "integrations.manage")).toBe(true);
+  });
+
+  /* Every line of the map is read off the server. These hold the ones that were
+     read wrong, so a screen is never offered to a role the server refuses. */
+  test("the messages screen is admin work, as the server has it", () => {
+    // Every endpoint behind it is IsAdminOrSuper — all nine. The map said
+    // viewer, so a viewer and an editor were sent to a screen where each of
+    // their requests came back refused.
+    expect(roleCan("viewer", "messages.read")).toBe(false);
+    expect(roleCan("editor", "messages.read")).toBe(false);
+    expect(roleCan("admin", "messages.read")).toBe(true);
+  });
+
+  test("search-engine settings are admin work, as the server has it", () => {
+    // apps/seo is IsAdminOrSuper throughout; the map said editor.
+    expect(roleCan("editor", "seo.manage")).toBe(false);
+    expect(roleCan("admin", "seo.manage")).toBe(true);
+  });
+
+  test("the content screens are editor work, as the server has it", () => {
+    // apps/cms, apps/legal, apps/blog, apps/team and apps/form_builder are
+    // IsEditorOrAbove throughout.
+    ["content.edit", "blog.edit", "team.manage", "forms.manage", "services.manage"]
+      .forEach((capability) => {
+        expect(roleCan("editor", capability)).toBe(true);
+        expect(roleCan("viewer", capability)).toBe(false);
+      });
   });
 
   test("a capability nobody declared is refused, not granted", () => {
@@ -156,7 +183,7 @@ describe("the guard on a screen", () => {
 
     const retry = await screen.findByRole("button", { name: "أعد المحاولة" });
     api.get.mockResolvedValue({
-      data: { id: 1, name: "من يعمل", email: "a@b.c", role: "editor" },
+      data: { id: 1, name: "من يعمل", email: "a@b.c", role: "admin" },
     });
     userEvent.click(retry);
 
@@ -182,7 +209,7 @@ describe("the sidebar", () => {
     const hrefs = offeredLinks();
 
     expect(hrefs).toContain("/dashboard");
-    expect(hrefs).toContain("/dashboard/messages");
+    expect(hrefs).not.toContain("/dashboard/messages");
     expect(hrefs).not.toContain("/dashboard/users");
     expect(hrefs).not.toContain("/dashboard/settings");
     expect(hrefs).not.toContain("/dashboard/cms/footer");
@@ -198,6 +225,8 @@ describe("the sidebar", () => {
     expect(hrefs).toContain("/dashboard/blog");
     expect(hrefs).not.toContain("/dashboard/users");
     expect(hrefs).not.toContain("/dashboard/email-templates");
+    expect(hrefs).not.toContain("/dashboard/messages");
+    expect(hrefs).not.toContain("/dashboard/seo");
   });
 
   test("the general manager is offered everything", async () => {
