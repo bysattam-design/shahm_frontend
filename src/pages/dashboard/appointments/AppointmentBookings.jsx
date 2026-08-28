@@ -1,5 +1,6 @@
 // src/pages/dashboard/appointment/AppointmentBookings.jsx
 import React, { useEffect, useState, useMemo } from "react";
+import { formatDate, formatMonth } from "../../../utils/format";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import Modal from "../../../components/common/dashboard/Modal";
@@ -341,7 +342,7 @@ export default function AppointmentBookings() {
               </svg>
             </button>
             <h3 className="appt-cal-month">
-              {currentMonth.toLocaleDateString(isRtl ? "ar-SA" : "en-US", { month: "long", year: "numeric" })}
+              {formatMonth(currentMonth, isRtl ? "ar" : "en")}
             </h3>
             <button className="appt-cal-nav-btn" onClick={() => navigateMonth(1)} type="button">
               <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
@@ -380,7 +381,7 @@ export default function AppointmentBookings() {
             <div className="appt-selected-day">
               <h4 className="appt-selected-day-title">
                 {t("cms.appointments.bookings.bookings_for")}{" "}
-                {selectedDate.toLocaleDateString(isRtl ? "ar-SA" : "en-US")}
+                {formatDate(selectedDate, isRtl ? "ar" : "en")}
               </h4>
               {getBookingsForDate(selectedDate).length === 0 ? (
                 <p className="appt-empty-hint">{t("cms.appointments.bookings.no_bookings_day")}</p>

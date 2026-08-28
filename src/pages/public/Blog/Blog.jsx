@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
+import { formatDate } from "../../../utils/format";
 import { getPublicPosts, getPublicBlogSettings, getPublicCategories } from "../../../api/publicApi";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -12,10 +13,7 @@ function BlogCard({ post, isEnglish, variant = "normal" }) {
     .join(", ");
   const category = isEnglish ? post.category?.name_en : post.category?.name_ar;
   const categoryColor = post.category?.color || "#353C3C";
-  const date = new Date(post.created_at).toLocaleDateString(
-    isEnglish ? "en-US" : "ar-SA",
-    { year: "numeric", month: "short", day: "numeric" }
-  );
+  const date = formatDate(post.created_at, isEnglish ? "en" : "ar");
   return (
     <Link
       to={`/blog/${post.slug}`}

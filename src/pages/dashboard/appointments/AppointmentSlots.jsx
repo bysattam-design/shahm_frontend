@@ -1,5 +1,6 @@
 // src/pages/dashboard/appointment/AppointmentSlots.jsx
 import React, { useEffect, useState } from "react";
+import { formatDate, formatMonth } from "../../../utils/format";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import Deletebtn from "../../../components/common/dashboard/Deletebtn";
@@ -343,7 +344,7 @@ const getSlotsForDate = (date) => {
               </svg>
             </button>
             <h3 className="appt-cal-month">
-              {currentMonth.toLocaleDateString(isRtl ? "ar-SA" : "en-US", { month: "long", year: "numeric" })}
+              {formatMonth(currentMonth, isRtl ? "ar" : "en")}
             </h3>
             <button className="appt-cal-nav-btn" onClick={() => navigateMonth(1)} type="button">
               <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
@@ -386,7 +387,7 @@ const getSlotsForDate = (date) => {
             <div className="appt-selected-day">
               <h4 className="appt-selected-day-title">
                 {t("cms.appointments.slots.slots_for")}{" "}
-                {selectedDate.toLocaleDateString(isRtl ? "ar-SA" : "en-US")}
+                {formatDate(selectedDate, isRtl ? "ar" : "en")}
               </h4>
               {getSlotsForDate(selectedDate).length === 0 ? (
                 <p className="appt-empty-hint">{t("cms.appointments.slots.no_slots_day")}</p>

@@ -1,4 +1,5 @@
 import React from "react";
+import { formatDateTime } from "../../../utils/format";
 import { useTranslation } from "react-i18next";
 
 /**
@@ -11,7 +12,7 @@ export default function DraftNotice({ draft, onRestore, onDiscard }) {
 
   const savedAt = draft.savedAt ? new Date(draft.savedAt) : null;
   const stamp = savedAt && !Number.isNaN(savedAt.getTime())
-    ? savedAt.toLocaleString()
+    ? formatDateTime(savedAt)
     : "";
 
   return (

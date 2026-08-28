@@ -1,3 +1,7 @@
+import {
+  formatDate as writeDate,
+  formatDateTime as writeDateTime,
+} from "../../../../../utils/format";
 // src/pages/dashboard/services/requests/utils/requestHelpers.js
 
 // ─── Status metadata ──────────────────────────────────────────────────────────
@@ -100,13 +104,7 @@ export function getLocalizedServiceTitle(service, lang) {
 export function formatDateTime(dateStr) {
   if (!dateStr) return "—";
   try {
-    return new Date(dateStr).toLocaleString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return writeDateTime(dateStr) || dateStr;
   } catch {
     return dateStr;
   }
@@ -115,11 +113,7 @@ export function formatDateTime(dateStr) {
 export function formatDate(dateStr) {
   if (!dateStr) return "—";
   try {
-    return new Date(dateStr).toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+    return writeDate(dateStr) || dateStr;
   } catch {
     return dateStr;
   }

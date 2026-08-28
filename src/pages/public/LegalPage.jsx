@@ -1,5 +1,6 @@
 // src/pages/public/LegalPage.jsx
 import React, { useEffect, useState, useRef, useCallback } from "react";
+import { formatDate } from "../../utils/format";
 import { getPublicLegal } from "../../api/legalApi";
 import { useParams } from "react-router-dom";
 import { Helmet } from "react-helmet";
@@ -99,10 +100,7 @@ export default function LegalPage() {
 
   // Date formatted from page.created_at (req #6)
   const createdDate = page.created_at
-    ? new Date(page.created_at).toLocaleDateString(
-        isEnglish ? "en-US" : "ar-SA",
-        { year: "numeric", month: "long", day: "numeric" }
-      )
+    ? formatDate(page.created_at, isEnglish ? "en" : "ar")
     : null;
 
   return (

@@ -1,5 +1,6 @@
 // src/pages/dashboard/services/requests/ServiceRequests.jsx
 import React, { useEffect, useState, useCallback } from "react";
+import { formatDate } from "../../../../utils/format";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import Openbtn from "../../../../components/common/dashboard/Openbtn";
@@ -158,9 +159,7 @@ setTotalPages(
   };
 
   const fmtDate = (d) =>
-    d ? new Date(d).toLocaleDateString(isRtl ? "ar-SA" : "en-GB", {
-      day: "numeric", month: "short", year: "numeric",
-    }) : "—";
+    d ? formatDate(d, isRtl ? "ar" : "en") : "—";
 
   return (
     <div className="cms-services-content" dir={isRtl ? "rtl" : "ltr"}>

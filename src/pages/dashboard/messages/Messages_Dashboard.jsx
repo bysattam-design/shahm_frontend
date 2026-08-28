@@ -1,5 +1,6 @@
 // src/pages/dashboard/messages/Messages_Dashboard.jsx
 import React, { useEffect, useState, useCallback } from "react";
+import { formatDate, formatDateTime } from "../../../utils/format";
 import { useMessagesStore } from "../../../store/useMessagesStore";
 import SunEditor from "suneditor-react";
 import "suneditor/dist/css/suneditor.min.css";
@@ -573,7 +574,7 @@ export default function Messages_Dashboard() {
                   </td>
                   <td className="msg-table-email">{s.email}</td>
                   <td className="msg-table-date">
-                    {new Date(s.created_at).toLocaleDateString()}
+                    {formatDate(s.created_at, i18n.language)}
                   </td>
                   <td>
                     <div className="msg-actions-cell">
@@ -682,7 +683,7 @@ export default function Messages_Dashboard() {
             <tbody>
               {paginatedLogs.map((log) => (
                 <tr key={log.id}>
-                  <td className="msg-table-date">{new Date(log.created_at).toLocaleString()}</td>
+                  <td className="msg-table-date">{formatDateTime(log.created_at, i18n.language)}</td>
                   <td className="msg-table-subject">{log.subject}</td>
                   <td style={{ textAlign: "center" }}>
                     <span className="msg-count-badge">{log.recipients_count}</span>
