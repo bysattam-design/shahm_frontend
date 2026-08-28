@@ -1,16 +1,42 @@
 import React, { useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import { useDashboardStore } from "../../../store/useDashboardStore";
 import { useTranslation } from "react-i18next";
+import { formatDateTime, formatNumber } from "../../../utils/format";
+import useCan from "../../../hooks/useCan";
+import { Button, EmptyState } from "../../../components/ui";
 import "../../../styles/dashboard/home.css";
+
+/**
+ * Whether the reader has asked not to be moved about.
+ *
+ * The counters ran their climb on every render whatever the reader had set,
+ * and a screen that opens on four of them at once is a lot of movement for
+ * someone who cannot take it.
+ */
+function prefersStillness() {
+  if (typeof window === "undefined" || !window.matchMedia) return false;
+
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/** A moment, written the way the reader reads. See utils/format. */
+function useMoment() {
+  const { i18n } = useTranslation();
+
+  return (value) => formatDateTime(value, i18n.language);
+}
 
 export default function DashboardHome() {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.language === "ar";
-  const { stats, loadStats } = useDashboardStore();
+  const { stats, status, error, loadStats } = useDashboardStore();
+  const { can } = useCan();
+  const moment = useMoment();
 
   useEffect(() => { loadStats(); }, [loadStats]);
 
-  if (!stats) {
+  if (status === "loading" && !stats) {
     return (
       <div className="dh-loading">
         <div className="dh-spinner">
@@ -25,6 +51,26 @@ export default function DashboardHome() {
     );
   }
 
+  // The spinner above used to be the answer to a refused load as well, and it
+  // never stopped: `stats` stayed null and nothing said why.
+  if (status === "failed" && !stats) {
+    return (
+      <div className="dh-root" dir={isRtl ? "rtl" : "ltr"}>
+        <EmptyState
+          title={t("states.error_title", "تعذر جلب البيانات")}
+          hint={error || t("states.error_hint", "تحقق من الاتصال ثم أعد المحاولة.")}
+          action={
+            <Button onClick={() => loadStats()}>
+              {t("states.retry", "أعد المحاولة")}
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
+
+  if (!stats) return null;
+
   return (
     <div className="dh-root" dir={isRtl ? "rtl" : "ltr"}>
 
@@ -34,9 +80,21 @@ export default function DashboardHome() {
           <h1 className="dh-title">{t("dashboard.overview")}</h1>
           <p className="dh-subtitle">{t("dashboard.subtitle")}</p>
         </div>
-        <div className="dh-live-badge">
-          <span className="dh-live-dot" />
-          {t("dashboard.live")}
+        {/* The badge said «مباشر» beside a pulsing dot while the figures were
+            fetched once and never again. It says when they were read, and
+            offers to read them afresh. */}
+        <div className="dh-header-right">
+          <span className="dh-as-of">
+            {t("dashboard.as_of", "حتى")} {moment(Date.now())}
+          </span>
+          <Button
+            intent="ghost"
+            size="sm"
+            loading={status === "loading"}
+            onClick={() => loadStats()}
+          >
+            {t("dashboard.refresh", "حدث")}
+          </Button>
         </div>
       </header>
 
@@ -44,6 +102,7 @@ export default function DashboardHome() {
       <section className="dh-cards">
         <StatCard
           title={t("dashboard.cards.today_visits")}
+          to={null}
           value={stats.visits.today}
           color="blue"
           icon={
@@ -55,6 +114,7 @@ export default function DashboardHome() {
         />
         <StatCard
           title={t("dashboard.cards.week_visits")}
+          to={null}
           value={stats.visits.week}
           color="purple"
           icon={
@@ -66,6 +126,8 @@ export default function DashboardHome() {
         />
         <StatCard
           title={t("dashboard.cards.total_messages")}
+          to={"/dashboard/messages"}
+          allowed={can("messages.read")}
           value={stats.messages.total}
           color="amber"
           icon={
@@ -77,6 +139,8 @@ export default function DashboardHome() {
         />
         <StatCard
           title={t("dashboard.cards.subscribers")}
+          to={"/dashboard/messages"}
+          allowed={can("messages.read")}
           value={stats.subscribers.total}
           color="green"
           icon={
@@ -100,18 +164,20 @@ export default function DashboardHome() {
                 fill="currentColor"/>
             </svg>
           }
+          to={can("messages.read") ? "/dashboard/messages" : null}
+          seeAll={t("dashboard.see_all", "افتح الكل")}
+          linkFor={(item) => (can("messages.read") ? `/dashboard/messages/${item.id}` : null)}
           renderItem={(item) => (
             <>
               <div className="dh-item-header">
                 <strong className="dh-item-name">{item.phone}</strong>
+                {/* The state was written twice on every row — once as a badge
+                    and once again as text beneath it. Once is enough. */}
                 <span className={`dh-badge ${item.is_read ? "dh-badge--read" : "dh-badge--unread"}`}>
-                  {item.is_read ? t("messages.status.closed") : t("messages.status.new")}
+                  {t(`messages.status.${item.status}`)}
                 </span>
               </div>
-              <span className="dh-item-meta">{t(`messages.status.${item.status}`)}</span>
-              <small className="dh-item-date">
-                {new Date(item.created_at).toLocaleString()}
-              </small>
+              <small className="dh-item-date">{moment(item.created_at)}</small>
             </>
           )}
         />
@@ -126,12 +192,12 @@ export default function DashboardHome() {
                 fill="currentColor"/>
             </svg>
           }
+          to={can("messages.read") ? "/dashboard/messages" : null}
+          seeAll={t("dashboard.see_all", "افتح الكل")}
           renderItem={(item) => (
             <>
               <strong className="dh-item-name">{item.email}</strong>
-              <small className="dh-item-date">
-                {new Date(item.created_at).toLocaleString()}
-              </small>
+              <small className="dh-item-date">{moment(item.created_at)}</small>
             </>
           )}
         />
@@ -151,6 +217,10 @@ export default function DashboardHome() {
             {stats.visits.top_pages.length} {t("dashboard.pages")}
           </span>
         </div>
+
+        {stats.visits.top_pages.length === 0 && (
+          <p className="dh-empty">{t("dashboard.no_data")}</p>
+        )}
 
         <ul className="dh-top-pages">
           {stats.visits.top_pages.map((p, i) => (
@@ -174,55 +244,41 @@ export default function DashboardHome() {
 
 /* ── CountUp animation ────────────────────────────────────────── */
 function CountUp({ value }) {
-  const ref = useRef(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const target = Number(value) || 0;
-    const duration = 1200;
-    const start = performance.now();
-    const step = (now) => {
-      const progress = Math.min((now - start) / duration, 1);
-      const ease = 1 - Math.pow(1 - progress, 3); // ease-out-cubic
-      el.textContent = Math.floor(ease * target).toLocaleString();
-      if (progress < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  }, [value]);
+  const ref = useCountUp(value, 1200);
+
   return <b className="dh-top-page-count" ref={ref}>{value}</b>;
 }
 
 /* ── StatCard ─────────────────────────────────────────────────── */
-function StatCard({ title, value, icon, color }) {
-  const ref = useRef(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const target = Number(value) || 0;
-    const duration = 1000;
-    const start = performance.now();
-    const step = (now) => {
-      const progress = Math.min((now - start) / duration, 1);
-      const ease = 1 - Math.pow(1 - progress, 3);
-      el.textContent = Math.floor(ease * target).toLocaleString();
-      if (progress < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  }, [value]);
+function StatCard({ title, value, icon, color, to = null, allowed = true }) {
+  const ref = useCountUp(value);
 
-  return (
-    <div className={`dh-card dh-card--${color}`}>
+  const body = (
+    <>
       <div className="dh-card-icon">{icon}</div>
       <div className="dh-card-body">
         <span className="dh-card-label">{title}</span>
         <div className="dh-card-value" ref={ref}>{value}</div>
       </div>
-    </div>
+    </>
   );
+
+  // A figure that names a place the reader may go leads there. The screen used
+  // to state four numbers and offer nothing to press, so an editor who read
+  // «18 رسالة» had to leave, find the sidebar, and start again.
+  if (to && allowed) {
+    return (
+      <Link to={to} className={`dh-card dh-card--${color} dh-card--linked`}>
+        {body}
+      </Link>
+    );
+  }
+
+  return <div className={`dh-card dh-card--${color}`}>{body}</div>;
 }
 
 /* ── ContentBox ───────────────────────────────────────────────── */
-function ContentBox({ title, items, renderItem, emptyText, icon }) {
+function ContentBox({ title, items, renderItem, emptyText, icon, to = null, linkFor = null, seeAll }) {
   return (
     <div className="dh-box">
       <div className="dh-box-header">
@@ -233,14 +289,54 @@ function ContentBox({ title, items, renderItem, emptyText, icon }) {
         ? <p className="dh-empty">{emptyText}</p>
         : (
           <div className="dh-items">
-            {items.map((item) => (
-              <div key={item.id || item.email} className="dh-item">
-                {renderItem(item)}
-              </div>
-            ))}
+            {items.map((item) => {
+              const body = renderItem(item);
+              const href = linkFor ? linkFor(item) : null;
+              const key = item.id ?? item.email;
+
+              return href ? (
+                <Link key={key} to={href} className="dh-item dh-item--linked">{body}</Link>
+              ) : (
+                <div key={key} className="dh-item">{body}</div>
+              );
+            })}
           </div>
         )
       }
+      {to && <Link to={to} className="dh-see-all">{seeAll}</Link>}
     </div>
   );
+}
+
+/**
+ * Climbs a figure to its value, unless the reader has asked to be left still.
+ */
+function useCountUp(value, duration = 1000) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+
+    const target = Number(value) || 0;
+
+    if (prefersStillness()) {
+      el.textContent = formatNumber(target);
+      return undefined;
+    }
+
+    let frame = 0;
+    const start = performance.now();
+    const step = (now) => {
+      const progress = Math.min((now - start) / duration, 1);
+      const ease = 1 - Math.pow(1 - progress, 3); // ease-out-cubic
+      el.textContent = formatNumber(Math.floor(ease * target));
+      if (progress < 1) frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+
+    return () => cancelAnimationFrame(frame);
+  }, [value, duration]);
+
+  return ref;
 }

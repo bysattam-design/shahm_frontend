@@ -119,7 +119,10 @@
     },
     "latest_messages": "Contact Requests",
     "latest_subscribers": "Newest Subscribers",
-    "top_pages": "Most Visited Pages"
+    "top_pages": "Most Visited Pages",
+    "as_of": "As of",
+    "refresh": "Refresh",
+    "see_all": "Open all"
   },
   "messages": {
     "dashboard": "Messages Dashboard",

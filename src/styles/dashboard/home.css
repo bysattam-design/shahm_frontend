@@ -448,3 +448,40 @@
     transition-duration:      0.01ms !important;
   }
 }
+/* A figure that leads somewhere looks like it does, and answers the keyboard.
+   Colour is not touched: the card keeps whatever the appearance layer gives
+   it, and only the frame and the lift say it can be pressed. */
+.dh-card--linked,
+.dh-item--linked {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.dh-card--linked:hover,
+.dh-item--linked:hover { transform: translateY(-1px); }
+.dh-card--linked:focus-visible,
+.dh-item--linked:focus-visible,
+.dh-see-all:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.dh-see-all {
+  display: inline-block;
+  margin-block-start: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* When the figures were read, beside the button that reads them again. */
+.dh-header-right { display: flex; align-items: center; gap: 10px; }
+.dh-as-of { font-size: 12px; opacity: 0.7; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dh-card--linked, .dh-item--linked { transition: none; }
+  .dh-card--linked:hover, .dh-item--linked:hover { transform: none; }
+}

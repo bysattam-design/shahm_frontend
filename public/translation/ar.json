@@ -119,7 +119,10 @@
     },
     "latest_messages": "طلبات التواصل",
     "latest_subscribers": "أحدث المشتركين",
-    "top_pages": "الصفحات الأكثر زيارة"
+    "top_pages": "الصفحات الأكثر زيارة",
+    "as_of": "حتى",
+    "refresh": "حدث",
+    "see_all": "افتح الكل"
   },
   "messages": {
     "dashboard": "لوحة الرسائل",
