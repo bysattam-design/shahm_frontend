@@ -7,6 +7,9 @@ import toast from "react-hot-toast";
 import { useSweetAlert } from "../../../components/common/SweetAlert";
 import Editbtn   from "../../../components/common/dashboard/Editbtn";
 import Deletebtn from "../../../components/common/dashboard/Deletebtn";
+import { Button, EmptyState, Spinner as UiSpinner } from "../../../components/ui";
+import { parseApiError } from "../../../utils/apiErrors";
+import "../../../styles/forms/cms-form.css";
 import "../../../styles/dashboard/cms/header.css";
 
 /* ══════════════════════════════════════════════════════
@@ -98,6 +101,59 @@ function buildTree(flat) {
 
 const TABS = ["menu", "logos", "menu_images", "quick_access", "page_content"];
 
+/** Nothing refused, nothing said — the state each form starts from. */
+const NO_REFUSAL = { fields: {}, message: "" };
+
+/**
+ * Says what the server said, and hands back what belongs on the fields.
+ *
+ * Twelve catch sites on this screen answered a refusal with one of two keys —
+ * «فشل الحفظ» or «فشل الحذف» — and dropped the server's own message and the
+ * name of the field it named. One of them read `non_field_errors[0]` and threw
+ * the per-field messages away with the rest.
+ */
+function reportRefusal(error, fallback) {
+  const parsed = parseApiError(error);
+
+  if (!parsed.canceled) toast.error(parsed.message || fallback);
+
+  return { fields: parsed.fields, message: parsed.message };
+}
+
+/**
+ * Puts the caret on the first field the server refused, so the editor is
+ * looking at what they have to change rather than hunting for it.
+ */
+function focusRejected(fields) {
+  const first = Object.keys(fields || {})[0];
+  if (!first || typeof document === "undefined") return;
+
+  const element = document.querySelector(`[data-field="${first}"]`);
+  if (element && typeof element.focus === "function") element.focus();
+}
+
+/** The server's word about one field, where that field lives. */
+function FieldError({ message }) {
+  if (!message) return null;
+
+  return (
+    <span className="sf-field__error" role="alert">
+      {message}
+    </span>
+  );
+}
+
+/** The server's word about the whole form, above its buttons. */
+function FormError({ message }) {
+  if (!message) return null;
+
+  return (
+    <div className="cms-header-form-error" role="alert">
+      {message}
+    </div>
+  );
+}
+
 /* ══════════════════════════════════════════════════════
    MAIN COMPONENT
 ══════════════════════════════════════════════════════ */
@@ -111,6 +167,15 @@ export default function HeaderCms() {
   const tabRefs    = useRef([]);
   const [indicator, setIndicator] = useState({ left: 0, right: "auto", width: 0 });
   const [activeTab, setActiveTab] = useState("menu");
+
+  // What the first load did, and what the server refused on each of the
+  // screen's five forms.
+  const [pageState, setPageState] = useState({ status: "loading", message: "" });
+  const [menuErrors, setMenuErrors] = useState(NO_REFUSAL);
+  const [logoError, setLogoError] = useState("");
+  const [imageErrors, setImageErrors] = useState(NO_REFUSAL);
+  const [qaErrors, setQaErrors] = useState(NO_REFUSAL);
+  const [pcErrors, setPcErrors] = useState(NO_REFUSAL);
 
   const measureIndicator = useCallback(() => {
     const bar      = tabsBarRef.current;
@@ -174,7 +239,9 @@ export default function HeaderCms() {
   const [pcForm,     setPcForm]     = useState({ slug:"", title_ar:"", title_en:"", content_ar:"", content_en:"" });
 
   /* ── Load all data ── */
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async ({ quiet = false } = {}) => {
+    if (!quiet) setPageState((prev) => (prev.status === "ready" ? prev : { status: "loading", message: "" }));
+
     try {
       const res = await api.get(API_PATHS.cms.header);
       const all = res.data;
@@ -188,7 +255,16 @@ export default function HeaderCms() {
       setQuickAccess(all.filter((l) => l.type === "quick_access"));
       const p = await api.get(API_PATHS.cms.pages);
       setPages(p.data);
-    } catch (err) { console.error(err); }
+      setPageState({ status: "ready", message: "" });
+    } catch (err) {
+      const parsed = parseApiError(err);
+      if (parsed.canceled) return;
+
+      // The failure used to go to the console and nowhere else, so the screen
+      // rendered its five empty tabs and an outage looked like a header with
+      // nothing in it.
+      setPageState({ status: "failed", message: parsed.message });
+    }
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
@@ -215,10 +291,12 @@ export default function HeaderCms() {
         await api.post(API_PATHS.cms.header, fd, { headers:{ "Content-Type":"multipart/form-data" } });
         toast.success(t("cms.header.success.created"));
       }
-      resetForm(); loadData();
+      setMenuErrors(NO_REFUSAL);
+      resetForm(); loadData({ quiet: true });
     } catch (err) {
-      console.error(err);
-      toast.error(t("cms.header.save_failed"));
+      const refused = reportRefusal(err, t("cms.header.save_failed"));
+      setMenuErrors(refused);
+      focusRejected(refused.fields);
     } finally { setLoadingKey(key, false); }
   };
 
@@ -239,8 +317,8 @@ export default function HeaderCms() {
     setLoadingKey(`menu-delete-${id}`, true);
     try {
       await api.delete(API_PATHS.cms.headerItem(id));
-      toast.success(t("cms.header.success.deleted")); loadData();
-    } catch { toast.error(t("cms.header.delete_failed")); }
+      toast.success(t("cms.header.success.deleted")); loadData({ quiet: true });
+    } catch (err) { reportRefusal(err, t("cms.header.delete_failed")); }
     finally  { setLoadingKey(`menu-delete-${id}`, false); }
   };
 
@@ -256,8 +334,9 @@ export default function HeaderCms() {
     try {
       await api.post(API_PATHS.cms.header, fd, { headers:{ "Content-Type":"multipart/form-data" } });
       toast.success(t("cms.header.logo.success.uploaded"));
-      setLogoFiles((prev) => ({ ...prev, [variant]:null })); loadData();
-    } catch { toast.error(t("cms.header.save_failed")); }
+      setLogoError("");
+      setLogoFiles((prev) => ({ ...prev, [variant]:null })); loadData({ quiet: true });
+    } catch (err) { setLogoError(reportRefusal(err, t("cms.header.save_failed")).message); }
     finally  { setLoadingKey(key, false); }
   };
 
@@ -269,8 +348,8 @@ export default function HeaderCms() {
     setLoadingKey(`logo-delete-${variant}`, true);
     try {
       await api.delete(API_PATHS.cms.headerItem(logoItem.id));
-      toast.success(t("cms.header.logo.success.deleted")); loadData();
-    } catch { toast.error(t("cms.header.save_failed")); }
+      toast.success(t("cms.header.logo.success.deleted")); loadData({ quiet: true });
+    } catch (err) { setLogoError(reportRefusal(err, t("cms.header.save_failed")).message); }
     finally  { setLoadingKey(`logo-delete-${variant}`, false); }
   };
 
@@ -298,8 +377,13 @@ export default function HeaderCms() {
         await api.post(API_PATHS.cms.header, fd, { headers:{ "Content-Type":"multipart/form-data" } });
         toast.success(t("cms.header.success.created"));
       }
-      resetMenuImageForm(); loadData();
-    } catch { toast.error(t("cms.header.save_failed")); }
+      setImageErrors(NO_REFUSAL);
+      resetMenuImageForm(); loadData({ quiet: true });
+    } catch (err) {
+      const refused = reportRefusal(err, t("cms.header.save_failed"));
+      setImageErrors(refused);
+      focusRejected(refused.fields);
+    }
     finally  { setLoadingKey(key, false); }
   };
 
@@ -320,8 +404,8 @@ export default function HeaderCms() {
     setLoadingKey(`img-delete-${id}`, true);
     try {
       await api.delete(API_PATHS.cms.headerItem(id));
-      toast.success(t("cms.header.success.deleted")); loadData();
-    } catch { toast.error(t("cms.header.delete_failed")); }
+      toast.success(t("cms.header.success.deleted")); loadData({ quiet: true });
+    } catch (err) { reportRefusal(err, t("cms.header.delete_failed")); }
     finally  { setLoadingKey(`img-delete-${id}`, false); }
   };
 
@@ -346,9 +430,13 @@ export default function HeaderCms() {
         toast.success(t("cms.header.success.created"));
       }
       setQaForm({ type:"quick_access", label_ar:"", label_en:"", slug:"", url:"", page:"", order:0, is_active:true });
-      setQaEditId(null); loadData();
+      setQaEditId(null); setQaErrors(NO_REFUSAL); loadData({ quiet: true });
     } catch (err) {
-      toast.error(err?.response?.data?.non_field_errors?.[0] || t("cms.header.save_failed"));
+      // This one already showed `non_field_errors[0]` and dropped every
+      // per-field message with the rest.
+      const refused = reportRefusal(err, t("cms.header.save_failed"));
+      setQaErrors(refused);
+      focusRejected(refused.fields);
     } finally { setLoadingKey(key, false); }
   };
 
@@ -364,8 +452,8 @@ export default function HeaderCms() {
     setLoadingKey(`qa-delete-${id}`, true);
     try {
       await api.delete(API_PATHS.cms.headerItem(id));
-      toast.success(t("cms.header.success.deleted")); loadData();
-    } catch { toast.error(t("cms.header.save_failed")); }
+      toast.success(t("cms.header.success.deleted")); loadData({ quiet: true });
+    } catch (err) { reportRefusal(err, t("cms.header.save_failed")); }
     finally  { setLoadingKey(`qa-delete-${id}`, false); }
   };
 
@@ -374,7 +462,8 @@ export default function HeaderCms() {
     try {
       const res = await api.get(API_PATHS.cms.publicContent(slug));
       setPcForm(res.data);
-    } catch { toast.error(t("cms.header.save_failed")); }
+      setPcErrors(NO_REFUSAL);
+    } catch (err) { setPcErrors(reportRefusal(err, t("cms.header.save_failed"))); }
   };
 
   const handlePcSubmit = async (e) => {
@@ -384,8 +473,13 @@ export default function HeaderCms() {
     setLoadingKey(key, true);
     try {
       await api.patch(API_PATHS.cms.pageContent(pcEditSlug), pcForm);
+      setPcErrors(NO_REFUSAL);
       toast.success(t("cms.header.success.updated"));
-    } catch { toast.error(t("cms.header.save_failed")); }
+    } catch (err) {
+      const refused = reportRefusal(err, t("cms.header.save_failed"));
+      setPcErrors(refused);
+      focusRejected(refused.fields);
+    }
     finally  { setLoadingKey(key, false); }
   };
 
@@ -461,6 +555,50 @@ export default function HeaderCms() {
   /* ══════════════════════════════════════════════════════
      RENDER
   ══════════════════════════════════════════════════════ */
+  const pageHeader = (
+    <div className="cms-header-page-header">
+      <div className="cms-header-page-header-left">
+        <div className="cms-header-page-header-icon"><IcoGear /></div>
+        <div>
+          <h1 className="cms-header-title">{t("cms.header.title")}</h1>
+          <p className="cms-header-subtitle">{t("cms.header.subtitle")}</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  // A refused load used to go to the console and nowhere else, so the screen
+  // rendered its five empty tabs and an outage looked like a header with
+  // nothing in it.
+  if (pageState.status === "loading") {
+    return (
+      <div className="cms-header-root" dir={isAr ? "rtl" : "ltr"}>
+        {pageHeader}
+        <div style={{ padding: "48px 0", textAlign: "center" }}>
+          <UiSpinner size={20} label={t("states.loading", "جار التحميل")} />
+        </div>
+      </div>
+    );
+  }
+
+  if (pageState.status === "failed") {
+    return (
+      <div className="cms-header-root" dir={isAr ? "rtl" : "ltr"}>
+        {sweetAlertEl}
+        {pageHeader}
+        <EmptyState
+          title={t("states.error_title", "تعذر جلب البيانات")}
+          hint={pageState.message || t("states.error_hint", "تحقق من الاتصال ثم أعد المحاولة.")}
+          action={
+            <Button onClick={() => loadData()}>
+              {t("states.retry", "أعد المحاولة")}
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="cms-header-root" dir={isAr ? "rtl" : "ltr"}>
       {sweetAlertEl}
@@ -526,15 +664,17 @@ export default function HeaderCms() {
                 <div className="cms-header-form-row">
                   <div className="cms-header-form-group">
                     <label className="cms-header-label">{t("cms.header.label_ar")}</label>
-                    <input className="cms-header-input" name="label_ar" dir="rtl"
+                    <input className="cms-header-input" name="label_ar" data-field="label_ar" dir="rtl"
                       placeholder={t("cms.header.placeholder_label_ar")}
                       value={form.label_ar} onChange={handleChange} required />
+                    <FieldError message={menuErrors.fields.label_ar} />
                   </div>
                   <div className="cms-header-form-group">
                     <label className="cms-header-label">{t("cms.header.label_en")}</label>
-                    <input className="cms-header-input" name="label_en"
+                    <input className="cms-header-input" name="label_en" data-field="label_en"
                       placeholder={t("cms.header.placeholder_label_en")}
                       value={form.label_en} onChange={handleChange} required />
+                    <FieldError message={menuErrors.fields.label_en} />
                   </div>
                 </div>
                 <div className="cms-header-form-row">
@@ -552,14 +692,16 @@ export default function HeaderCms() {
                 <div className="cms-header-form-row">
                   <div className="cms-header-form-group">
                     <label className="cms-header-label">{t("cms.header.fields.slug")}</label>
-                    <input className="cms-header-input" name="slug" placeholder="/contact"
+                    <input className="cms-header-input" name="slug" data-field="slug" placeholder="/contact"
                       value={form.slug} onChange={handleChange} />
+                    <FieldError message={menuErrors.fields.slug} />
                   </div>
                   <div className="cms-header-form-group">
                     <label className="cms-header-label">{t("cms.header.custom_url")}</label>
-                    <input className="cms-header-input" name="url"
+                    <input className="cms-header-input" name="url" data-field="url"
                       placeholder={t("cms.header.placeholder_url")}
                       value={form.url} onChange={handleChange} />
+                    <FieldError message={menuErrors.fields.url} />
                   </div>
                 </div>
               </div>
@@ -582,8 +724,9 @@ export default function HeaderCms() {
                   </div>
                   <div className="cms-header-form-group">
                     <label className="cms-header-label">{t("cms.header.fields.order")}</label>
-                    <input className="cms-header-input" type="number" name="order"
+                    <input className="cms-header-input" type="number" name="order" data-field="order"
                       value={form.order} onChange={handleChange} />
+                    <FieldError message={menuErrors.fields.order} />
                   </div>
                 </div>
                 <div className="cms-header-form-row">
@@ -598,6 +741,7 @@ export default function HeaderCms() {
                 </div>
               </div>
 
+              <FormError message={menuErrors.message} />
               <div className="cms-header-form-actions">
                 <button type="submit" className="cms-header-btn-primary"
                   disabled={!menuFormValid || loading[editId ? `menu-update-${editId}` : "menu-create"]}>
@@ -634,6 +778,7 @@ export default function HeaderCms() {
       {/* ══════════════ TAB 2 — LOGOS ══════════════ */}
       {activeTab === "logos" && (
         <div className="cms-header-tab-content" key="logos">
+          <FormError message={logoError} />
           <div className="cms-header-logo-grid">
             {logoVariants.map(({ key, label }, idx) => {
               const isUploading = loading[`logo-upload-${key}`];
@@ -668,8 +813,8 @@ export default function HeaderCms() {
                               const fd = new FormData();
                               fd.append("type","logo"); fd.append("logo_variant",key); fd.append("logo",file); fd.append("order",0); fd.append("is_active",true);
                               api.post(API_PATHS.cms.header, fd, { headers:{ "Content-Type":"multipart/form-data" } })
-                                .then(() => { toast.success(t("cms.header.logo.success.uploaded")); loadData(); })
-                                .catch((err) => { console.error(err); toast.error(t("cms.header.save_failed")); });
+                                .then(() => { setLogoError(""); toast.success(t("cms.header.logo.success.uploaded")); loadData({ quiet: true }); })
+                                .catch((err) => setLogoError(reportRefusal(err, t("cms.header.save_failed")).message));
                             }} />
                         </label>
                       </div>
@@ -711,13 +856,15 @@ export default function HeaderCms() {
                 <div className="cms-header-form-row">
                   <div className="cms-header-form-group">
                     <label className="cms-header-label">{t("cms.header.label_ar")}</label>
-                    <input className="cms-header-input" name="label_ar" dir="rtl"
+                    <input className="cms-header-input" name="label_ar" data-field="label_ar" dir="rtl"
                       value={menuImageForm.label_ar} onChange={handleMenuImageChange} required />
+                    <FieldError message={imageErrors.fields.label_ar} />
                   </div>
                   <div className="cms-header-form-group">
                     <label className="cms-header-label">{t("cms.header.label_en")}</label>
-                    <input className="cms-header-input" name="label_en"
+                    <input className="cms-header-input" name="label_en" data-field="label_en"
                       value={menuImageForm.label_en} onChange={handleMenuImageChange} required />
+                    <FieldError message={imageErrors.fields.label_en} />
                   </div>
                 </div>
                 <div className="cms-header-form-row">
@@ -735,13 +882,15 @@ export default function HeaderCms() {
                 <div className="cms-header-form-row">
                   <div className="cms-header-form-group">
                     <label className="cms-header-label">{t("cms.header.fields.slug")}</label>
-                    <input className="cms-header-input" name="slug" placeholder="/contact"
+                    <input className="cms-header-input" name="slug" data-field="slug" placeholder="/contact"
                       value={menuImageForm.slug} onChange={handleMenuImageChange} />
+                    <FieldError message={imageErrors.fields.slug} />
                   </div>
                   <div className="cms-header-form-group">
                     <label className="cms-header-label">{t("cms.header.custom_url")}</label>
-                    <input className="cms-header-input" name="url" placeholder="https://..."
+                    <input className="cms-header-input" name="url" data-field="url" placeholder="https://..."
                       value={menuImageForm.url} onChange={handleMenuImageChange} />
+                    <FieldError message={imageErrors.fields.url} />
                   </div>
                 </div>
                 <div className="cms-header-form-row">
@@ -769,8 +918,9 @@ export default function HeaderCms() {
                 <div className="cms-header-form-row">
                   <div className="cms-header-form-group">
                     <label className="cms-header-label">{t("cms.header.fields.order")}</label>
-                    <input className="cms-header-input" type="number" name="order"
+                    <input className="cms-header-input" type="number" name="order" data-field="order"
                       value={menuImageForm.order} onChange={handleMenuImageChange} />
+                    <FieldError message={imageErrors.fields.order} />
                   </div>
                   <div className="cms-header-form-group">
                     <label className="cms-header-label">{t("cms.header.fields.image")}</label>
@@ -792,6 +942,7 @@ export default function HeaderCms() {
                   <div />
                 </div>
               </div>
+              <FormError message={imageErrors.message} />
               <div className="cms-header-form-actions">
                 <button type="submit" className="cms-header-btn-primary"
                   disabled={!imgFormValid || loading[menuImageEditId ? `img-update-${menuImageEditId}` : "img-create"]}>
@@ -875,25 +1026,29 @@ export default function HeaderCms() {
                 <div className="cms-header-form-row">
                   <div className="cms-header-form-group">
                     <label className="cms-header-label">{t("cms.header.label_ar")}</label>
-                    <input className="cms-header-input" name="label_ar" dir="rtl"
+                    <input className="cms-header-input" name="label_ar" data-field="label_ar" dir="rtl"
                       value={qaForm.label_ar} onChange={handleQaChange} required />
+                    <FieldError message={qaErrors.fields.label_ar} />
                   </div>
                   <div className="cms-header-form-group">
                     <label className="cms-header-label">{t("cms.header.label_en")}</label>
-                    <input className="cms-header-input" name="label_en"
+                    <input className="cms-header-input" name="label_en" data-field="label_en"
                       value={qaForm.label_en} onChange={handleQaChange} required />
+                    <FieldError message={qaErrors.fields.label_en} />
                   </div>
                 </div>
                 <div className="cms-header-form-row">
                   <div className="cms-header-form-group">
                     <label className="cms-header-label">{t("cms.header.fields.slug")}</label>
-                    <input className="cms-header-input" name="slug" placeholder="/contact"
+                    <input className="cms-header-input" name="slug" data-field="slug" placeholder="/contact"
                       value={qaForm.slug} onChange={handleQaChange} />
+                    <FieldError message={qaErrors.fields.slug} />
                   </div>
                   <div className="cms-header-form-group">
                     <label className="cms-header-label">{t("cms.header.custom_url")}</label>
-                    <input className="cms-header-input" name="url" placeholder="https://..."
+                    <input className="cms-header-input" name="url" data-field="url" placeholder="https://..."
                       value={qaForm.url} onChange={handleQaChange} />
+                    <FieldError message={qaErrors.fields.url} />
                   </div>
                 </div>
                 <div className="cms-header-form-row">
@@ -909,8 +1064,9 @@ export default function HeaderCms() {
                   </div>
                   <div className="cms-header-form-group">
                     <label className="cms-header-label">{t("cms.header.fields.order")}</label>
-                    <input className="cms-header-input" type="number" name="order"
+                    <input className="cms-header-input" type="number" name="order" data-field="order"
                       value={qaForm.order} onChange={handleQaChange} />
+                    <FieldError message={qaErrors.fields.order} />
                   </div>
                 </div>
                 <div className="cms-header-form-row">
@@ -924,6 +1080,7 @@ export default function HeaderCms() {
                   <div />
                 </div>
               </div>
+              <FormError message={qaErrors.message} />
               <div className="cms-header-form-actions">
                 <button type="submit" className="cms-header-btn-primary"
                   disabled={!qaFormValid || (!qaEditId && quickAccess.length >= 8) || loading[qaEditId ? `qa-update-${qaEditId}` : "qa-create"]}>
@@ -1047,6 +1204,7 @@ export default function HeaderCms() {
                     </div>
                   </div>
                 </div>
+                <FormError message={pcErrors.message} />
                 <div className="cms-header-form-actions">
                   <button type="submit" className="cms-header-btn-primary" disabled={loading["pc-save"]}>
                     {loading["pc-save"] ? <IcoSpinner /> : <IcoSave />}

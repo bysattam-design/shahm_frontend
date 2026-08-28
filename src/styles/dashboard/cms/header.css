@@ -1034,3 +1034,16 @@
 /* ── Spinner ── */
 @keyframes ch-spin { to { transform: rotate(360deg); } }
 .ch-spin { animation: ch-spin 0.8s linear infinite; }
+/* The server's own words about a refused save, above the buttons that will be
+   pressed again. Takes its colour from the theme rather than carrying one. */
+.cms-header-form-error {
+  margin-block: 12px 0;
+  padding: 10px 14px;
+  border: 1px solid var(--t-line, currentColor);
+  border-inline-start-width: 3px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--t-ink, inherit);
+  background: var(--t-surface-sunk, transparent);
+}
