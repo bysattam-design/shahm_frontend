@@ -1240,9 +1240,9 @@
       "users_list": "قائمة المستخدمين",
       "confirm_delete_title": "تأكيد حذف المستخدم",
       "confirm_delete": "هل أنت متأكد من حذف هذا المستخدم؟",
-      "deleted_title": "تم الحذف!",
+      "deleted_title": "حذف المستخدم",
       "loading": "جارٍ تحميل المستخدمين...",
-      "empty": "لا يوجد مستخدمون حالياً. قم بإضافة أول مستخدم!",
+      "empty": "لا مستخدم بعد. اضف اول مستخدم.",
       "fields": {
         "email": "البريد الإلكتروني",
         "email_placeholder": "user@example.com",
@@ -1279,14 +1279,30 @@
         "id": "المعرف"
       },
       "success": {
-        "user_created": "تم إضافة المستخدم بنجاح!",
-        "user_updated": "تم تحديث المستخدم بنجاح!",
-        "user_deleted": "تم حذف المستخدم بنجاح!"
+        "user_created": "قيد المستخدم",
+        "user_updated": "حدث المستخدم",
+        "user_deleted": "حذف المستخدم"
       },
       "errors": {
         "create_failed": "فشل في إضافة المستخدم. يرجى المحاولة مرة أخرى.",
         "update_failed": "فشل في تحديث المستخدم. يرجى المحاولة مرة أخرى.",
         "delete_failed": "فشل في حذف المستخدم. يرجى المحاولة مرة أخرى."
+      },
+      "search_fields": "الاسم والبريد والمعرف",
+      "empty_filtered": "لا مستخدم يطابق ما رشحت",
+      "load_failed": "تعذر جلب المستخدمين",
+      "filters": {
+        "role": "الدور",
+        "state": "الحالة",
+        "active": "مفعل",
+        "inactive": "موقوف"
+      },
+      "bulk": {
+        "delete": "احذف المحدد",
+        "confirm_title": "حذف {{count}} من المستخدمين",
+        "confirm_text": "الحذف لا يتراجع، والحسابات المحددة تزول نهائيا.",
+        "done": "حذف {{count}} من المستخدمين",
+        "partial": "حذف {{done}}، وتعذر حذف {{failed}}"
       }
     },
     "seo": {
@@ -3025,5 +3041,31 @@
     "max_raster": "حد الصورة {{mb}} م.ب",
     "recommended": "المقاس الموصى به {{w}}×{{h}}",
     "max_pixels": "بحد أقصى {{px}} بكسل"
+  },
+  "list": {
+    "search": "البحث",
+    "search_placeholder": "ابحث في القائمة",
+    "search_in": "يبحث في: {{fields}}",
+    "clear_search": "امسح البحث",
+    "filters": "الترشيح القائم",
+    "remove_filter": "ارفع هذا القيد",
+    "clear_all": "ارفع الترشيح كله",
+    "all": "الكل",
+    "sort_by": "افرز بحسب {{column}}",
+    "selection": "الصفوف المحددة",
+    "selected": "المحدد: {{count}}",
+    "selected_matching": "المحدد: كل المطابق ({{count}})",
+    "select_all_matching": "حدد كل النتائج المطابقة ({{count}})",
+    "select_page": "حدد صفوف هذه الصفحة",
+    "select_row": "حدد هذا الصف",
+    "clear_selection": "افك التحديد",
+    "pages": "صفحات القائمة",
+    "page_number": "الصفحة {{page}}",
+    "previous": "الصفحة السابقة",
+    "next": "الصفحة التالية",
+    "page_size": "في الصفحة",
+    "range": "{{from}}–{{to}} من {{total}}",
+    "no_match_title": "لا نتيجة تطابق ما رشحت",
+    "no_match_hint": "ارفع بعض القيد او امسح البحث."
   }
 }

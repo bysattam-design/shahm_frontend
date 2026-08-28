@@ -39,7 +39,22 @@ jest.mock("sweetalert2", () => ({
 
 jest.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key, fallback) => fallback || key,
+    // i18next takes either a string fallback or a bag of values to interpolate.
+    // Returning the bag itself put an object where a React child belonged, so a
+    // screen that counted anything could not be rendered in a test at all.
+    t: (key, second) => {
+      if (typeof second === "string") return second;
+
+      if (second && typeof second === "object") {
+        return Object.entries(second).reduce(
+          (text, [name, value]) =>
+            text.replace(new RegExp(`{{\\s*${name}\\s*}}`, "g"), String(value)),
+          key
+        );
+      }
+
+      return key;
+    },
     i18n: {
       language: "en",
       changeLanguage: jest.fn(() => Promise.resolve()),

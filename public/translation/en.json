@@ -1284,6 +1284,22 @@
         "create_failed": "Failed to create user. Please try again.",
         "update_failed": "Failed to update user. Please try again.",
         "delete_failed": "Failed to delete user. Please try again."
+      },
+      "search_fields": "name, email and id",
+      "empty_filtered": "No user matches the filter",
+      "load_failed": "The users could not be fetched",
+      "filters": {
+        "role": "Role",
+        "state": "State",
+        "active": "Active",
+        "inactive": "Suspended"
+      },
+      "bulk": {
+        "delete": "Delete selected",
+        "confirm_title": "Delete {{count}} users",
+        "confirm_text": "Deletion cannot be undone; the selected accounts are removed for good.",
+        "done": "{{count}} users deleted",
+        "partial": "{{done}} deleted, {{failed}} could not be"
       }
     },
     "seo": {
@@ -3065,5 +3081,31 @@
     "max_raster": "Image up to {{mb}} MB",
     "recommended": "Recommended {{w}}×{{h}}",
     "max_pixels": "Up to {{px}} px"
+  },
+  "list": {
+    "search": "Search",
+    "search_placeholder": "Search this list",
+    "search_in": "Searches: {{fields}}",
+    "clear_search": "Clear the search",
+    "filters": "Active filters",
+    "remove_filter": "Lift this filter",
+    "clear_all": "Lift every filter",
+    "all": "All",
+    "sort_by": "Sort by {{column}}",
+    "selection": "Selected rows",
+    "selected": "Selected: {{count}}",
+    "selected_matching": "Selected: everything matching ({{count}})",
+    "select_all_matching": "Select everything matching ({{count}})",
+    "select_page": "Select the rows on this page",
+    "select_row": "Select this row",
+    "clear_selection": "Clear the selection",
+    "pages": "List pages",
+    "page_number": "Page {{page}}",
+    "previous": "Previous page",
+    "next": "Next page",
+    "page_size": "Per page",
+    "range": "{{from}}–{{to}} of {{total}}",
+    "no_match_title": "Nothing matches the filter",
+    "no_match_hint": "Lift a filter or clear the search."
   }
 }

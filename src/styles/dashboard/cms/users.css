@@ -266,19 +266,39 @@
   box-shadow: none;
   background: transparent;
 }
+/* The two row actions were written in literal green and red, outside the
+   appearance layer, so they did not turn with the theme: the green measured
+   3.3 against the evening surface and was the least legible thing in the row.
+   Editing is the ordinary act and is quiet; deleting is the one that cannot be
+   taken back and keeps the danger tone the whole panel uses for it. */
 .du-icon-btn--edit {
-  color: #059669;
-  border-color: rgba(5,150,105,0.25);
-  background: rgba(5,150,105,0.07);
+  color: var(--t-ink-secondary);
+  border-color: var(--t-border);
+  background: var(--t-surface);
 }
-.du-icon-btn--edit:hover { background: #059669; color: #fff; border-color: #059669; }
+.du-icon-btn--edit:hover {
+  color: var(--t-ink);
+  border-color: var(--t-border-strong);
+  background: var(--t-hover);
+}
 
+/* The danger tone measures 3.6 against the evening surface — enough for a
+   mark, short of what a word needs. So the word is ink and the mark carries
+   the tone, rather than a red label nobody can read after dark. */
 .du-icon-btn--delete {
-  color: #dc2626;
-  border-color: rgba(239,68,68,0.25);
-  background: rgba(239,68,68,0.07);
+  color: var(--t-ink);
+  border-color: var(--t-danger-border);
+  background: var(--t-danger-soft);
 }
-.du-icon-btn--delete:hover { background: #ef4444; color: #fff; border-color: #ef4444; }
+
+.du-icon-btn--delete svg { color: var(--t-danger); }
+
+.du-icon-btn--delete:hover {
+  background: var(--t-danger-soft-strong);
+  border-color: var(--t-danger-border-strong);
+}
+
+.du-icon-btn:focus-visible { outline: 2px solid var(--t-focus); outline-offset: 2px; }
 
 /* ════════════════════════════════════════════════════════════
    MODAL FORM BODY
@@ -458,4 +478,10 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+/* The active constraints sit between the bar that made them and the table
+   they narrow, so lifting one is where reading one is. */
+.du-chips-row {
+  padding: 10px 14px;
+  border-block-end: 1px solid var(--t-divider);
 }

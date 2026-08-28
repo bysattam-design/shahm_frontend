@@ -260,3 +260,325 @@
   .ui-btn, .ui-check__box { transition: none; }
   .ui-spinner, .ui-btn__spinner, .ui-skeleton { animation: none; }
 }
+
+/* =============================================================
+   THE LIST — the bar above a table, the marks on it, and the pager
+   below it.
+
+   Every list in the panel is this one shape. Before it, no list had a
+   search, a filter or a sort, one screen carried its own second copy of
+   a pager, and another showed its pager twice for a single position.
+============================================================= */
+
+/* ── the bar ────────────────────────────────────────────────── */
+
+.ui-list-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-block-end: 1px solid var(--t-divider);
+}
+
+.ui-list-bar__row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ui-list-bar__filters { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.ui-list-bar__actions { display: flex; align-items: center; gap: 8px; margin-inline-start: auto; }
+
+.ui-list-bar__hint {
+  margin: 0;
+  font-size: var(--t-text-sm);
+  color: var(--t-ink-muted);
+}
+
+/* ── the search field ───────────────────────────────────────── */
+
+.ui-list-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 220px;
+  max-inline-size: 380px;
+}
+
+.ui-list-search__icon {
+  position: absolute;
+  inset-inline-start: 11px;
+  display: inline-flex;
+  color: var(--t-ink-muted);
+  pointer-events: none;
+}
+
+.ui-list-search__input {
+  font: inherit;
+  font-size: var(--t-text-base);
+  inline-size: 100%;
+  block-size: var(--t-control-h-lg);
+  padding-inline: 34px 32px;
+  border: 1px solid var(--t-border);
+  border-radius: var(--t-radius-control);
+  background: var(--t-surface-sunk);
+  color: var(--t-ink);
+}
+
+.ui-list-search__input::placeholder { color: var(--t-ink-muted); }
+
+.ui-list-search__input:focus-visible {
+  outline: 2px solid var(--t-focus);
+  outline-offset: 1px;
+  border-color: var(--t-border-strong);
+}
+
+.ui-list-search__clear {
+  position: absolute;
+  inset-inline-end: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 20px;
+  block-size: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--t-hover);
+  color: var(--t-ink-secondary);
+  cursor: pointer;
+}
+
+.ui-list-search__clear:hover { background: var(--t-active); color: var(--t-ink); }
+.ui-list-search__clear:focus-visible { outline: 2px solid var(--t-focus); outline-offset: 1px; }
+
+/* ── a named choice ─────────────────────────────────────────── */
+
+.ui-list-filter { display: inline-flex; align-items: center; gap: 6px; }
+
+.ui-list-filter__label {
+  font-size: var(--t-text-sm);
+  color: var(--t-ink-muted);
+}
+
+.ui-list-filter__select {
+  font: inherit;
+  font-size: var(--t-text-sm);
+  block-size: var(--t-control-h);
+  padding-inline: 10px;
+  border: 1px solid var(--t-border);
+  border-radius: var(--t-radius-control);
+  background: var(--t-surface);
+  color: var(--t-ink);
+  cursor: pointer;
+}
+
+.ui-list-filter__select:focus-visible { outline: 2px solid var(--t-focus); outline-offset: 1px; }
+
+/* ── what is narrowing the list ─────────────────────────────── */
+
+.ui-chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ui-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-block: 4px;
+  padding-inline: 10px 6px;
+  border: 1px solid var(--t-border);
+  border-radius: var(--t-radius-pill);
+  font-size: var(--t-text-xs);
+  color: var(--t-ink-secondary);
+}
+
+.ui-chip__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 18px;
+  block-size: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--t-ink-muted);
+  cursor: pointer;
+}
+
+.ui-chip__remove:hover { background: var(--t-active); color: var(--t-ink); }
+.ui-chip__remove:focus-visible { outline: 2px solid var(--t-focus); outline-offset: 1px; }
+
+.ui-chips__clear,
+.ui-bulk__link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--t-text-sm);
+  color: var(--t-ink-secondary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.ui-chips__clear:hover,
+.ui-bulk__link:hover { color: var(--t-ink); }
+
+.ui-chips__clear:focus-visible,
+.ui-bulk__link:focus-visible { outline: 2px solid var(--t-focus); outline-offset: 2px; border-radius: var(--t-radius-small); }
+
+/* ── the rows in force ──────────────────────────────────────── */
+
+.ui-bulk {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--t-surface-sunk);
+  border-block-end: 1px solid var(--t-divider);
+}
+
+.ui-bulk__count {
+  font-size: var(--t-text-base);
+  font-weight: var(--t-weight-medium);
+  color: var(--t-ink);
+}
+
+.ui-bulk__actions { display: inline-flex; align-items: center; gap: 8px; margin-inline-start: auto; }
+
+/* ── ordering ───────────────────────────────────────────────── */
+
+.ui-table__th--sortable { padding: 0; }
+
+.ui-table__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  inline-size: 100%;
+  padding: 10px 14px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--t-text-sm);
+  font-weight: var(--t-weight-medium);
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.ui-table__sort:hover { color: var(--t-ink); }
+.ui-table__sort:focus-visible { outline: 2px solid var(--t-focus); outline-offset: -2px; }
+
+/* The arrow is faint until the column is the one in force, so the head does
+   not read as seven columns all claiming to be sorted. */
+.ui-table__arrow { opacity: 0; }
+.ui-table__th--sortable:hover .ui-table__arrow { opacity: 0.45; }
+.ui-table__arrow--on { opacity: 1; }
+
+/* The head stays while the rows move. It carries the surface colour, or the
+   rows would show through it as they pass. */
+.ui-table__head .ui-table__th {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 1;
+  background: var(--t-surface);
+}
+
+.ui-table__td--num { font-variant-numeric: tabular-nums; }
+
+/* ── the pager ──────────────────────────────────────────────── */
+
+.ui-pager {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 14px;
+  border-block-start: 1px solid var(--t-divider);
+}
+
+.ui-pager__count {
+  margin: 0;
+  font-size: var(--t-text-sm);
+  color: var(--t-ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ui-pager__pages {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-inline-start: auto;
+}
+
+.ui-pager__page,
+.ui-pager__step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: var(--t-control-h);
+  block-size: var(--t-control-h);
+  padding-inline: 8px;
+  border: 1px solid transparent;
+  border-radius: var(--t-radius-small);
+  background: none;
+  font: inherit;
+  font-size: var(--t-text-sm);
+  color: var(--t-ink-secondary);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.ui-pager__page:hover:not(:disabled),
+.ui-pager__step:hover:not(:disabled) { background: var(--t-hover); color: var(--t-ink); }
+
+/* The page in force is ringed, not filled: a filled cell changes the ground
+   under the number and takes its contrast with it. */
+.ui-pager__page--here {
+  border-color: var(--t-border-strong);
+  color: var(--t-ink);
+  font-weight: var(--t-weight-medium);
+}
+
+.ui-pager__page:focus-visible,
+.ui-pager__step:focus-visible { outline: 2px solid var(--t-focus); outline-offset: 1px; }
+
+.ui-pager__step:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.ui-pager__gap { padding-inline: 2px; color: var(--t-ink-muted); }
+
+.ui-pager__size { display: inline-flex; align-items: center; gap: 6px; }
+
+.ui-pager__size-label { font-size: var(--t-text-sm); color: var(--t-ink-muted); }
+
+/* The chevrons point by the writing direction, not by a language check. */
+[dir="rtl"] .ui-pager__step svg { transform: scaleX(-1); }
+
+/* ── said, not shown ────────────────────────────────────────── */
+
+.ui-visually-hidden {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* The third state of a list's head: part of the page is chosen. It is marked
+   the way the full state is, so the two read as one control. */
+.ui-check__input:indeterminate + .ui-check__box {
+  background: var(--t-ink);
+  border-color: var(--t-ink);
+  color: var(--t-ground);
+}

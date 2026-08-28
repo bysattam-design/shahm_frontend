@@ -1,5 +1,5 @@
 // Dashboard user management page.
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useUsersStore } from "../../../store/useUsersStore";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
@@ -7,16 +7,26 @@ import Modal    from "../../../components/common/dashboard/Modal";
 import Editbtn  from "../../../components/common/dashboard/Editbtn";
 import Deletebtn from "../../../components/common/dashboard/Deletebtn";
 import { useSweetAlert } from "../../../components/common/SweetAlert";
+import useListState from "../../../hooks/useListState";
+import useSelection from "../../../hooks/useSelection";
+import { runQuery } from "../../../utils/listQuery";
+import { ROLE_RANKS } from "../../../utils/capabilities";
 import {
   Avatar,
   Badge,
+  BulkBar,
   Button,
   CellStack,
+  Checkbox,
   EmptyState,
-  Spinner,
+  FilterChips,
+  ListFilter,
+  ListToolbar,
+  Pager,
   TBody,
   TD,
   TH,
+  TableSkeleton,
   THead,
   TR,
   Table,
@@ -65,6 +75,12 @@ const IcoPerson = () => (
     <path d="M2 14c0-2.2 2.7-4 6-4s6 1.8 6 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
   </svg>
 );
+const IcoEmpty = () => (
+  <svg width="44" height="44" viewBox="0 0 48 48" fill="none">
+    <circle cx="24" cy="16" r="10" stroke="currentColor" strokeWidth="2" />
+    <path d="M4 40c0-8.8 8.95-16 20-16s20 7.2 20 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
 
 /* ── Role meta ─────────────────────────────────────────────── */
 /* A role is a rank, so its tone rises with it rather than being a colour
@@ -76,6 +92,8 @@ const ROLE_TONE = {
   viewer: "neutral",
 };
 
+const ROLE_ORDER = ["super_admin", "admin", "editor", "viewer"];
+
 function RoleBadge({ role, t }) {
   return (
     <Badge tone={ROLE_TONE[role] || "neutral"}>
@@ -83,6 +101,31 @@ function RoleBadge({ role, t }) {
     </Badge>
   );
 }
+
+/* ── What the list is asked ─────────────────────────────────────
+   Declared once, outside the component, so the objects keep their identity
+   between renders — a filter default that is rebuilt every render restarts
+   the list state on every keystroke.  */
+
+const SEARCH_FIELDS = ["name", "email", "id"];
+
+const FILTER_DEFAULTS = { role: "all", state: "all" };
+
+const FILTER_TESTS = {
+  role: (user, value) => user.role === value,
+  state: (user, value) => (value === "active" ? Boolean(user.is_active) : !user.is_active),
+};
+
+/* A cell that shows a badge still sorts on what the badge means: the roles
+   run super_admin → viewer, which is a rank and not an alphabet. */
+const SORT_ACCESSORS = {
+  id: (user) => user.id,
+  name: (user) => user.name || user.email || "",
+  role: (user) => ROLE_RANKS[user.role] || 0,
+  active: (user) => Boolean(user.is_active),
+};
+
+const COLUMNS = 6;
 
 /* ── User Form (shared for Create + Edit) ──────────────────── */
 function UserForm({ form, setForm, isEdit, saving, onSubmit, onCancel, t }) {
@@ -152,10 +195,9 @@ function UserForm({ form, setForm, isEdit, saving, onSubmit, onCancel, t }) {
             value={form.role}
             onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
           >
-            <option value="super_admin">{t("cms.users.roles.super_admin")}</option>
-            <option value="admin">{t("cms.users.roles.admin")}</option>
-            <option value="editor">{t("cms.users.roles.editor")}</option>
-            <option value="viewer">{t("cms.users.roles.viewer")}</option>
+            {ROLE_ORDER.map((role) => (
+              <option key={role} value={role}>{t(`cms.users.roles.${role}`)}</option>
+            ))}
           </select>
         </div>
 
@@ -184,15 +226,76 @@ const EMPTY_FORM = { email: "", name: "", password: "", role: "viewer" };
 export default function Users() {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.language === "ar";
-  const { users, fetchUsers, addUser, editUser, removeUser, loading } = useUsersStore();
-  const { alert: sweetEl } = useSweetAlert();
+  const { users, fetchUsers, addUser, editUser, removeUser, loading, error } = useUsersStore();
+  const { alert: sweetEl, show } = useSweetAlert();
 
   const [modalMode,  setModalMode]  = useState(null); // "create" | "edit" | null
   const [editTarget, setEditTarget] = useState(null);
   const [form,       setForm]       = useState(EMPTY_FORM);
   const [saving,     setSaving]     = useState(false);
+  const [bulkBusy,   setBulkBusy]   = useState(false);
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
+
+  /* ── The list: searched, narrowed, ordered, paged ── */
+  const list = useListState({
+    filters: FILTER_DEFAULTS,
+    sort: "id",
+    direction: "asc",
+    size: 10,
+  });
+
+  const result = useMemo(
+    () =>
+      runQuery(users, {
+        term: list.term,
+        fields: SEARCH_FIELDS,
+        filters: list.filters,
+        definitions: FILTER_TESTS,
+        sort: list.sort,
+        direction: list.direction,
+        accessors: SORT_ACCESSORS,
+        page: list.page,
+        size: list.size,
+      }),
+    [users, list.term, list.filters, list.sort, list.direction, list.page, list.size]
+  );
+
+  const pageIds = useMemo(() => result.rows.map((u) => String(u.id)), [result.rows]);
+  const matchingIds = useMemo(() => result.all.map((u) => String(u.id)), [result.all]);
+
+  const selection = useSelection({
+    pageIds,
+    matchingIds,
+    resetKey: list.narrowingKey,
+  });
+
+  /* ── What is narrowing the list, said in words ── */
+  const chips = [];
+
+  if (list.term) {
+    chips.push({
+      key: "q",
+      label: `${t("list.search")}: ${list.term}`,
+      onRemove: list.clearTerm,
+    });
+  }
+
+  if (list.filters.role !== FILTER_DEFAULTS.role) {
+    chips.push({
+      key: "role",
+      label: `${t("cms.users.filters.role")}: ${t(`cms.users.roles.${list.filters.role}`)}`,
+      onRemove: () => list.clearFilter("role"),
+    });
+  }
+
+  if (list.filters.state !== FILTER_DEFAULTS.state) {
+    chips.push({
+      key: "state",
+      label: `${t("cms.users.filters.state")}: ${t(`cms.users.filters.${list.filters.state}`)}`,
+      onRemove: () => list.clearFilter("state"),
+    });
+  }
 
   /* ── Open modals ── */
   const openCreate = () => {
@@ -219,8 +322,10 @@ export default function Users() {
     try {
       const ok = await addUser(form);
       if (ok) {
-        toast.success(t("cms.users.success.user_created", "User created successfully"));
+        toast.success(t("cms.users.success.user_created"));
         closeModal();
+      } else {
+        toast.error(t("cms.users.errors.create_failed"));
       }
     } finally { setSaving(false); }
   };
@@ -230,18 +335,58 @@ export default function Users() {
     try {
       const ok = await editUser(editTarget.id, form);
       if (ok) {
-        toast.success(t("cms.users.success.user_updated", "User updated successfully"));
+        toast.success(t("cms.users.success.user_updated"));
         closeModal();
+      } else {
+        toast.error(t("cms.users.errors.update_failed"));
       }
     } finally { setSaving(false); }
   };
 
-  /* ── Delete — handled by Deletebtn's own confirm ── */
+  /* ── Delete — one row, handled by Deletebtn's own confirm ── */
   const handleDelete = async (user) => {
-    const success = await removeUser(user.id);
-    if (success) toast.success(t("cms.users.success.user_deleted"));
-    else toast.error(t("cms.users.error.delete_failed", "Failed to delete user"));
+    const ok = await removeUser(user.id);
+    if (ok) toast.success(t("cms.users.success.user_deleted"));
+    else toast.error(t("cms.users.errors.delete_failed"));
   };
+
+  /* ── Delete — the rows in force ──────────────────────────────
+     A deletion cannot be taken back, so this one is the exception the panel
+     allows a dialog for, and the dialog's button names the act and its count
+     rather than saying «OK». The rows go one at a time and the outcome is
+     reported as it actually fell, not as a single cheerful line. */
+  const handleBulkDelete = useCallback(async () => {
+    const ids = selection.selectedIds;
+    if (ids.length === 0) return;
+
+    const confirmed = await show({
+      type: "confirm",
+      title: t("cms.users.bulk.confirm_title", { count: ids.length }),
+      message: t("cms.users.bulk.confirm_text"),
+      confirmText: t("cms.users.bulk.delete"),
+      cancelText: t("cms.users.actions.cancel"),
+      showCancel: true,
+    });
+
+    if (!confirmed) return;
+
+    setBulkBusy(true);
+    let done = 0;
+    let failed = 0;
+
+    for (const id of ids) {
+      // eslint-disable-next-line no-await-in-loop
+      const ok = await removeUser(Number(id));
+      if (ok) done += 1;
+      else failed += 1;
+    }
+
+    setBulkBusy(false);
+    selection.clear();
+
+    if (failed === 0) toast.success(t("cms.users.bulk.done", { count: done }));
+    else toast.error(t("cms.users.bulk.partial", { done, failed }));
+  }, [selection, show, t, removeUser]);
 
   /* ── Modal title / subtitle ── */
   const modalTitle = modalMode === "edit"
@@ -255,6 +400,70 @@ export default function Users() {
       <RoleBadge role={editTarget.role} t={t} />
     </div>
   ) : null;
+
+  /* ── Which of the states the card is in ──────────────────────
+     Six, and the order matters: a failure is not an empty list, and an empty
+     list under a filter is not an empty list. */
+  const state = error
+    ? "error"
+    : loading
+      ? "loading"
+      : users.length === 0
+        ? "empty"
+        : result.total === 0
+          ? "no-match"
+          : "rows";
+
+  const sortedAs = (key) => (list.sort === key ? list.direction : null);
+
+  const head = (
+    <THead>
+      <TR>
+        <TH>
+          <Checkbox
+            checked={selection.pageState === "all"}
+            indeterminate={selection.pageState === "some"}
+            onChange={selection.togglePage}
+            ariaLabel={t("list.select_page")}
+            disabled={state !== "rows"}
+          />
+        </TH>
+        <TH
+          sortable
+          sorted={sortedAs("id")}
+          onSort={() => list.toggleSort("id")}
+          label={t("list.sort_by", { column: t("cms.users.table.id") })}
+        >
+          {t("cms.users.table.id")}
+        </TH>
+        <TH
+          sortable
+          sorted={sortedAs("name")}
+          onSort={() => list.toggleSort("name")}
+          label={t("list.sort_by", { column: t("cms.users.table.email") })}
+        >
+          {t("cms.users.table.email")}
+        </TH>
+        <TH
+          sortable
+          sorted={sortedAs("role")}
+          onSort={() => list.toggleSort("role")}
+          label={t("list.sort_by", { column: t("cms.users.table.role") })}
+        >
+          {t("cms.users.table.role")}
+        </TH>
+        <TH
+          sortable
+          sorted={sortedAs("active")}
+          onSort={() => list.toggleSort("active")}
+          label={t("list.sort_by", { column: t("cms.users.table.active") })}
+        >
+          {t("cms.users.table.active")}
+        </TH>
+        <TH>{t("cms.users.table.actions")}</TH>
+      </TR>
+    </THead>
+  );
 
   return (
     <div
@@ -278,51 +487,167 @@ export default function Users() {
       </div>
 
       {/* ── USERS TABLE CARD ── */}
-      <div className="du-card">
+      <div className="du-card" aria-busy={loading || undefined}>
         {/* Card header */}
         <div className="du-card-header">
           <div className="du-card-header-left">
             <span className="du-card-icon"><IcoUsers /></span>
             <h2 className="du-card-title">{t("cms.users.users_list")}</h2>
           </div>
-          <span className="du-count-badge">{users.length}</span>
+          <span className="du-count-badge">{result.total}</span>
         </div>
 
+        {/* The bar. It is not offered over a list that has no rows at all —
+            there is nothing to search, and a search box over an empty table
+            reads as a search that found nothing. */}
+        {state !== "empty" && state !== "error" && (
+          <>
+            <ListToolbar
+              value={list.draft}
+              onChange={list.setDraft}
+              onClear={list.clearTerm}
+              hintId="du-search-hint"
+              labels={{
+                search: t("list.search"),
+                placeholder: t("list.search_placeholder"),
+                searchIn: t("list.search_in", { fields: t("cms.users.search_fields") }),
+                clear: t("list.clear_search"),
+              }}
+              filters={
+                <>
+                  <ListFilter
+                    id="du-filter-role"
+                    label={t("cms.users.filters.role")}
+                    value={list.filters.role}
+                    onChange={(value) => list.setFilter("role", value)}
+                    options={[
+                      { value: "all", label: t("list.all") },
+                      ...ROLE_ORDER.map((role) => ({
+                        value: role,
+                        label: t(`cms.users.roles.${role}`),
+                      })),
+                    ]}
+                  />
+                  <ListFilter
+                    id="du-filter-state"
+                    label={t("cms.users.filters.state")}
+                    value={list.filters.state}
+                    onChange={(value) => list.setFilter("state", value)}
+                    options={[
+                      { value: "all", label: t("list.all") },
+                      { value: "active", label: t("cms.users.filters.active") },
+                      { value: "inactive", label: t("cms.users.filters.inactive") },
+                    ]}
+                  />
+                </>
+              }
+            />
+
+            {chips.length > 0 && (
+              <div className="du-chips-row">
+                <FilterChips
+                  chips={chips}
+                  onClearAll={list.reset}
+                  labels={{
+                    group: t("list.filters"),
+                    remove: t("list.remove_filter"),
+                    clearAll: t("list.clear_all"),
+                  }}
+                />
+              </div>
+            )}
+
+            <BulkBar
+              count={selection.count}
+              scope={selection.scope}
+              onClear={selection.clear}
+              onSelectAllMatching={selection.selectAllMatching}
+              canSelectAllMatching={selection.canSelectAllMatching}
+              labels={{
+                region: t("list.selection"),
+                count:
+                  selection.scope === "matching"
+                    ? t("list.selected_matching", { count: selection.count })
+                    : t("list.selected", { count: selection.count }),
+                selectAllMatching: t("list.select_all_matching", { count: result.total }),
+                clear: t("list.clear_selection"),
+              }}
+            >
+              <Button
+                intent="danger"
+                size="sm"
+                onClick={handleBulkDelete}
+                loading={bulkBusy}
+              >
+                {t("cms.users.bulk.delete")}
+              </Button>
+            </BulkBar>
+          </>
+        )}
+
         {/* Table body */}
-        {loading ? (
-          <div className="du-loading">
-            <Spinner size={32} label={t("cms.users.loading")} />
-            <p>{t("cms.users.loading")}</p>
-          </div>
-        ) : users.length === 0 ? (
+        {state === "loading" && (
+          <>
+            <p className="ui-visually-hidden" role="status">{t("states.loading")}</p>
+            <Table>
+              {head}
+              <TableSkeleton columns={COLUMNS} rows={6} />
+            </Table>
+          </>
+        )}
+
+        {state === "error" && (
           <EmptyState
-            icon={
-              <svg width="44" height="44" viewBox="0 0 48 48" fill="none">
-                <circle cx="24" cy="16" r="10" stroke="currentColor" strokeWidth="2" />
-                <path d="M4 40c0-8.8 8.95-16 20-16s20 7.2 20 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
+            title={t("cms.users.load_failed")}
+            hint={typeof error === "string" ? error : t("states.error_hint")}
+            action={
+              <Button size="sm" onClick={fetchUsers}>
+                {t("states.retry")}
+              </Button>
             }
-            title={t("cms.users.empty_state", "No users found")}
+          />
+        )}
+
+        {state === "empty" && (
+          <EmptyState
+            icon={<IcoEmpty />}
+            title={t("cms.users.empty")}
             action={
               <Button onClick={openCreate} icon={<IcoPlus />} size="sm">
                 {t("cms.users.actions.add")}
               </Button>
             }
           />
-        ) : (
-          <Table>
-            <THead>
-              <TR>
-                <TH>{t("cms.users.table.id", "المعرف")}</TH>
-                <TH>{t("cms.users.table.email")}</TH>
-                <TH>{t("cms.users.table.role")}</TH>
-                <TH>{t("cms.users.table.active")}</TH>
-                <TH>{t("cms.users.table.actions")}</TH>
-              </TR>
-            </THead>
-            <TBody>
-                {users.map((u) => (
-                  <TR key={u.id}>
+        )}
+
+        {state === "no-match" && (
+          <EmptyState
+            icon={<IcoEmpty />}
+            title={t("cms.users.empty_filtered")}
+            hint={t("list.no_match_hint")}
+            action={
+              <Button intent="quiet" size="sm" onClick={list.reset}>
+                {t("list.clear_all")}
+              </Button>
+            }
+          />
+        )}
+
+        {state === "rows" && (
+          <>
+            <Table>
+              {head}
+              <TBody>
+                {result.rows.map((u) => (
+                  <TR key={u.id} selected={selection.isSelected(u.id)}>
+                    <TD>
+                      <Checkbox
+                        id={`du-row-${u.id}`}
+                        checked={selection.isSelected(u.id)}
+                        onChange={() => selection.toggle(String(u.id))}
+                        ariaLabel={`${t("list.select_row")} — ${u.name || u.email}`}
+                      />
+                    </TD>
                     <TD muted>
                       <span className="du-id-chip">#{u.id}</span>
                     </TD>
@@ -336,7 +661,9 @@ export default function Users() {
                     <TD><RoleBadge role={u.role} t={t} /></TD>
                     <TD>
                       <Badge tone={u.is_active ? "success" : "neutral"} dot>
-                        {u.is_active ? t("common.yes") : t("common.no")}
+                        {u.is_active
+                          ? t("cms.users.filters.active")
+                          : t("cms.users.filters.inactive")}
                       </Badge>
                     </TD>
                     <TD>
@@ -361,8 +688,31 @@ export default function Users() {
                     </TD>
                   </TR>
                 ))}
-            </TBody>
-          </Table>
+              </TBody>
+            </Table>
+
+            {/* The one pager, at the foot and nowhere else. */}
+            <Pager
+              page={result.page}
+              pages={result.pages}
+              total={result.total}
+              size={list.size}
+              onPage={list.setPage}
+              onSize={list.setSize}
+              labels={{
+                navigation: t("list.pages"),
+                previous: t("list.previous"),
+                next: t("list.next"),
+                size: t("list.page_size"),
+                pageLabel: (page) => t("list.page_number", { page }),
+                range: t("list.range", {
+                  from: (result.page - 1) * list.size + 1,
+                  to: Math.min(result.page * list.size, result.total),
+                  total: result.total,
+                }),
+              }}
+            />
+          </>
         )}
       </div>
 
