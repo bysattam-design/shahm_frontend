@@ -1,0 +1,262 @@
+/* =============================================================
+   THE UI KIT — scoped under .ui-*
+
+   Every value comes from styles/theme.css, so a component follows
+   the appearance and the five chosen colours without knowing about
+   either. Nothing here casts a shadow; what is chosen is ringed.
+============================================================= */
+
+/* ── button ─────────────────────────────────────────────────── */
+
+.ui-btn {
+  font: inherit;
+  font-size: var(--t-text-base);
+  font-weight: var(--t-weight-medium);
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: var(--t-control-h-lg);
+  padding: 0 18px;
+  border: 1px solid transparent;
+  border-radius: var(--t-radius-control);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--t-motion-fast), color var(--t-motion-fast),
+    border-color var(--t-motion-fast);
+}
+
+.ui-btn--sm { height: var(--t-control-h); padding: 0 14px; font-size: var(--t-text-sm); }
+
+.ui-btn--primary {
+  background: var(--t-ink);
+  color: var(--t-ground);
+  border-color: var(--t-ink);
+}
+
+.ui-btn--quiet {
+  background: var(--t-surface);
+  color: var(--t-ink);
+  border-color: var(--t-border);
+}
+
+.ui-btn--danger {
+  background: var(--t-danger-soft);
+  color: var(--t-danger);
+  border-color: var(--t-danger-border);
+}
+
+.ui-btn:hover:not(:disabled) { opacity: 0.88; }
+.ui-btn--quiet:hover:not(:disabled) { opacity: 1; border-color: var(--t-border-strong); }
+
+.ui-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.ui-btn:focus-visible { outline: 2px solid var(--t-focus); outline-offset: 2px; }
+
+.ui-btn__spinner,
+.ui-spinner {
+  width: var(--spinner-size, 15px);
+  height: var(--spinner-size, 15px);
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  animation: ui-spin 0.7s linear infinite;
+  display: inline-block;
+}
+
+@keyframes ui-spin { to { transform: rotate(360deg); } }
+
+/* ── badge ──────────────────────────────────────────────────── */
+
+.ui-badge {
+  font-size: var(--t-text-xs);
+  font-weight: var(--t-weight-medium);
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: var(--t-radius-pill);
+  white-space: nowrap;
+}
+
+.ui-badge__dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+.ui-badge--neutral { background: var(--t-hover); color: var(--t-ink-secondary); }
+.ui-badge--success { background: var(--t-success-soft); color: var(--t-success); }
+.ui-badge--warning { background: var(--t-warning-soft); color: var(--t-warning); }
+.ui-badge--danger  { background: var(--t-danger-soft);  color: var(--t-danger); }
+.ui-badge--info    { background: var(--t-info-soft);    color: var(--t-info); }
+.ui-badge--accent  { background: var(--t-accent-soft);  color: var(--t-accent); }
+
+/* ── avatar ─────────────────────────────────────────────────── */
+
+.ui-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  border-radius: 50%;
+  background: var(--t-surface-sunk);
+  color: var(--t-ink-secondary);
+  font-size: var(--t-text-sm);
+  font-weight: var(--t-weight-semibold);
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px var(--t-border);
+}
+
+.ui-avatar--sm { width: 26px; height: 26px; font-size: var(--t-text-xs); }
+.ui-avatar--md { width: 34px; height: 34px; }
+.ui-avatar--lg { width: 44px; height: 44px; font-size: var(--t-text-md); }
+
+.ui-avatar__image { width: 100%; height: 100%; object-fit: cover; }
+
+.ui-avatar--count { background: var(--t-hover); color: var(--t-ink-muted); }
+
+.ui-avatar-stack { display: inline-flex; align-items: center; }
+
+/* Each face overlaps the one before it, and carries the surface colour so the
+   overlap reads as depth rather than as a smudge. */
+.ui-avatar-stack .ui-avatar + .ui-avatar {
+  margin-inline-start: -9px;
+  box-shadow: inset 0 0 0 1px var(--t-border), 0 0 0 2px var(--t-surface);
+}
+
+/* ── checkbox ───────────────────────────────────────────────── */
+
+.ui-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: var(--t-text-base);
+  color: var(--t-ink);
+}
+
+.ui-check--disabled { cursor: not-allowed; opacity: 0.5; }
+
+.ui-check__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ui-check__box {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--t-border-strong);
+  border-radius: var(--t-radius-small);
+  background: var(--t-surface);
+  color: transparent;
+  transition: background var(--t-motion-fast), border-color var(--t-motion-fast);
+}
+
+.ui-check__input:checked + .ui-check__box {
+  background: var(--t-ink);
+  border-color: var(--t-ink);
+  color: var(--t-ground);
+}
+
+.ui-check__input:focus-visible + .ui-check__box {
+  outline: 2px solid var(--t-focus);
+  outline-offset: 2px;
+}
+
+/* ── empty state ────────────────────────────────────────────── */
+
+.ui-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--t-ink-muted);
+}
+
+.ui-empty__icon { color: var(--t-ink-muted); opacity: 0.5; }
+.ui-empty__title { margin: 0; font-size: var(--t-text-base); color: var(--t-ink-secondary); }
+.ui-empty__hint { margin: 0; font-size: var(--t-text-sm); }
+.ui-empty__action { margin-block-start: 6px; }
+
+/* ── skeleton ───────────────────────────────────────────────── */
+
+.ui-skeleton {
+  display: block;
+  background: var(--t-hover);
+  border-radius: var(--t-radius-small);
+  animation: ui-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes ui-pulse { 50% { opacity: 0.45; } }
+
+/* ── table ──────────────────────────────────────────────────── */
+
+.ui-table-frame {
+  overflow-x: auto;
+  border-radius: var(--t-radius-card);
+}
+
+.ui-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--t-text-base);
+  color: var(--t-ink);
+}
+
+.ui-table__th {
+  text-align: start;
+  font-size: var(--t-text-sm);
+  font-weight: var(--t-weight-medium);
+  color: var(--t-ink-muted);
+  padding: 10px 14px;
+  white-space: nowrap;
+  border-block-end: 1px solid var(--t-divider);
+}
+
+.ui-table__td {
+  padding: 12px 14px;
+  vertical-align: middle;
+  border-block-end: 1px solid var(--t-divider);
+}
+
+.ui-table__td--muted { color: var(--t-ink-muted); }
+
+.ui-table__row:last-child .ui-table__td { border-block-end: 0; }
+
+.ui-table__row:hover .ui-table__td { background: var(--t-hover); }
+
+.ui-table__row--selected .ui-table__td { box-shadow: inset 0 2px 0 var(--t-marking), inset 0 -2px 0 var(--t-marking); }
+
+/* ── two-line cell ──────────────────────────────────────────── */
+
+.ui-cell-stack { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ui-cell-stack__text { display: flex; flex-direction: column; min-width: 0; }
+
+.ui-cell-stack__title {
+  font-weight: var(--t-weight-medium);
+  line-height: var(--t-leading-tight);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ui-cell-stack__sub {
+  font-size: var(--t-text-sm);
+  color: var(--t-ink-muted);
+  line-height: var(--t-leading-tight);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-btn, .ui-check__box { transition: none; }
+  .ui-spinner, .ui-btn__spinner, .ui-skeleton { animation: none; }
+}

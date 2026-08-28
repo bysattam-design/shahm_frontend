@@ -7,6 +7,20 @@ import Modal    from "../../../components/common/dashboard/Modal";
 import Editbtn  from "../../../components/common/dashboard/Editbtn";
 import Deletebtn from "../../../components/common/dashboard/Deletebtn";
 import { useSweetAlert } from "../../../components/common/SweetAlert";
+import {
+  Avatar,
+  Badge,
+  Button,
+  CellStack,
+  EmptyState,
+  Spinner,
+  TBody,
+  TD,
+  TH,
+  THead,
+  TR,
+  Table,
+} from "../../../components/ui";
 import "../../../styles/dashboard/cms/users.css";
 
 /* ── Icons ──────────────────────────────────────────────────── */
@@ -26,12 +40,6 @@ const IcoSave = () => (
       stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
     <path d="m13.5 1.5 3 3-8.25 8.25H5.25V9.75L13.5 1.5Z"
       stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-const IcoSpinner = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="users-spin">
-    <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.8"
-      strokeDasharray="28" strokeDashoffset="8" strokeLinecap="round"/>
   </svg>
 );
 const IcoEmail = () => (
@@ -59,25 +67,21 @@ const IcoPerson = () => (
 );
 
 /* ── Role meta ─────────────────────────────────────────────── */
-const ROLE_META = {
-  super_admin: { color: "#a855f7", bg: "rgba(168,85,247,0.09)",  border: "rgba(168,85,247,0.25)" },
-  admin:       { color: "#3b82f6", bg: "rgba(59,130,246,0.09)",  border: "rgba(59,130,246,0.25)" },
-  editor:      { color: "#22c55e", bg: "rgba(34,197,94,0.09)",   border: "rgba(34,197,94,0.25)"  },
-  viewer:      { color: "#64748b", bg: "rgba(100,116,139,0.09)", border: "rgba(100,116,139,0.25)"},
+/* A role is a rank, so its tone rises with it rather than being a colour
+   picked per role. */
+const ROLE_TONE = {
+  super_admin: "accent",
+  admin: "info",
+  editor: "success",
+  viewer: "neutral",
 };
-function RoleBadge({ role, t }) {
-  const m = ROLE_META[role] || ROLE_META.viewer;
-  return (
-    <span className="du-role-badge" style={{ "--rb-color": m.color, "--rb-bg": m.bg, "--rb-border": m.border }}>
-      {t(`cms.users.roles.${role}`, role)}
-    </span>
-  );
-}
 
-/* ── Avatar ─────────────────────────────────────────────────── */
-function Avatar({ name, email }) {
-  const letter = (name || email || "?")[0]?.toUpperCase();
-  return <span className="du-avatar">{letter}</span>;
+function RoleBadge({ role, t }) {
+  return (
+    <Badge tone={ROLE_TONE[role] || "neutral"}>
+      {t(`cms.users.roles.${role}`, role)}
+    </Badge>
+  );
 }
 
 /* ── User Form (shared for Create + Edit) ──────────────────── */
@@ -159,27 +163,16 @@ function UserForm({ form, setForm, isEdit, saving, onSubmit, onCancel, t }) {
 
       {/* Actions */}
       <div className="du-form-actions">
-        <button
-          className="du-btn du-btn--primary"
-          onClick={onSubmit}
-          disabled={saving}
-          type="button"
-        >
-          {saving ? <IcoSpinner /> : <IcoSave />}
+        <Button onClick={onSubmit} loading={saving} icon={<IcoSave />}>
           {saving
             ? t("cms.users.actions.saving", "Saving…")
             : isEdit
               ? t("cms.users.actions.save_changes")
               : t("cms.users.actions.save")}
-        </button>
-        <button
-          className="du-btn du-btn--ghost"
-          onClick={onCancel}
-          disabled={saving}
-          type="button"
-        >
+        </Button>
+        <Button intent="quiet" onClick={onCancel} disabled={saving}>
           {t("cms.users.actions.cancel")}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -279,10 +272,9 @@ export default function Users() {
             <p className="du-page-subtitle">{t("cms.users.subtitle")}</p>
           </div>
         </div>
-        <button className="du-btn-add" onClick={openCreate} type="button">
-          <IcoPlus />
+        <Button onClick={openCreate} icon={<IcoPlus />}>
           {t("cms.users.actions.add")}
-        </button>
+        </Button>
       </div>
 
       {/* ── USERS TABLE CARD ── */}
@@ -299,57 +291,55 @@ export default function Users() {
         {/* Table body */}
         {loading ? (
           <div className="du-loading">
-            <svg width="36" height="36" viewBox="0 0 36 36" fill="none" className="users-spin">
-              <circle cx="18" cy="18" r="15" stroke="rgba(53,60,60,0.15)" strokeWidth="3"/>
-              <path d="M33 18C33 9.7 26.3 3 18 3" stroke="#353C3C" strokeWidth="3" strokeLinecap="round"/>
-            </svg>
+            <Spinner size={32} label={t("cms.users.loading")} />
             <p>{t("cms.users.loading")}</p>
           </div>
         ) : users.length === 0 ? (
-          <div className="du-empty">
-            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" opacity="0.2">
-              <circle cx="24" cy="16" r="10" stroke="currentColor" strokeWidth="2"/>
-              <path d="M4 40c0-8.8 8.95-16 20-16s20 7.2 20 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-            <p>{t("cms.users.empty_state", "No users found")}</p>
-          </div>
+          <EmptyState
+            icon={
+              <svg width="44" height="44" viewBox="0 0 48 48" fill="none">
+                <circle cx="24" cy="16" r="10" stroke="currentColor" strokeWidth="2" />
+                <path d="M4 40c0-8.8 8.95-16 20-16s20 7.2 20 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            }
+            title={t("cms.users.empty_state", "No users found")}
+            action={
+              <Button onClick={openCreate} icon={<IcoPlus />} size="sm">
+                {t("cms.users.actions.add")}
+              </Button>
+            }
+          />
         ) : (
-          <div className="du-table-wrapper">
-            <table className="du-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>{t("cms.users.table.email")}</th>
-                  <th>{t("cms.users.table.name")}</th>
-                  <th>{t("cms.users.table.role")}</th>
-                  <th>{t("cms.users.table.active")}</th>
-                  <th>{t("cms.users.table.actions")}</th>
-                </tr>
-              </thead>
-              <tbody>
+          <Table>
+            <THead>
+              <TR>
+                <TH>ID</TH>
+                <TH>{t("cms.users.table.email")}</TH>
+                <TH>{t("cms.users.table.role")}</TH>
+                <TH>{t("cms.users.table.active")}</TH>
+                <TH>{t("cms.users.table.actions")}</TH>
+              </TR>
+            </THead>
+            <TBody>
                 {users.map((u) => (
-                  <tr key={u.id} className="du-table-row">
-                    <td>
+                  <TR key={u.id}>
+                    <TD muted>
                       <span className="du-id-chip">#{u.id}</span>
-                    </td>
-                    <td>
-                      <div className="du-user-cell">
-                        <Avatar name={u.name} email={u.email} />
-                        <div className="du-user-cell-info">
-                          <span className="du-user-name">{u.name || "—"}</span>
-                          <span className="du-user-email">{u.email}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="du-muted">{u.name || "—"}</td>
-                    <td><RoleBadge role={u.role} t={t} /></td>
-                    <td>
-                      <span className={`du-status-badge${u.is_active ? " du-status-badge--active" : " du-status-badge--inactive"}`}>
-                        <span className="du-status-dot" />
+                    </TD>
+                    <TD>
+                      <CellStack
+                        media={<Avatar name={u.name} email={u.email} />}
+                        title={u.name || "—"}
+                        sub={u.email}
+                      />
+                    </TD>
+                    <TD><RoleBadge role={u.role} t={t} /></TD>
+                    <TD>
+                      <Badge tone={u.is_active ? "success" : "neutral"} dot>
                         {u.is_active ? t("common.yes") : t("common.no")}
-                      </span>
-                    </td>
-                    <td>
+                      </Badge>
+                    </TD>
+                    <TD>
                       <div className="du-actions-cell">
                         {/* Global Editbtn */}
                         <Editbtn
@@ -368,12 +358,11 @@ export default function Users() {
                           label={t("cms.users.actions.delete")}
                         />
                       </div>
-                    </td>
-                  </tr>
+                    </TD>
+                  </TR>
                 ))}
-              </tbody>
-            </table>
-          </div>
+            </TBody>
+          </Table>
         )}
       </div>
 
