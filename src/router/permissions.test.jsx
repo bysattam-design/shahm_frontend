@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 import api from "../api/axiosClient";
@@ -131,6 +132,45 @@ describe("the guard on a screen", () => {
     renderGuarded("messages.read");
 
     await waitFor(() => expect(api.get).toHaveBeenCalledWith("/accounts/me/"));
+  });
+
+  test("a connection that drops while opening is said, not spun on for good", async () => {
+    api.get.mockRejectedValue({
+      response: { status: 500, data: { detail: "تعذر الوصول إلى الخادم." } },
+    });
+    signedInAs(null);
+    renderGuarded("messages.read");
+
+    // The fetch only runs while the status reads `loading`. A failure used to
+    // settle on `unknown`, which nothing ever moved off, so every screen span
+    // for good with nothing said.
+    expect(await screen.findByText("تعذر جلب البيانات")).toBeInTheDocument();
+    expect(screen.getByText("تعذر الوصول إلى الخادم.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "أعد المحاولة" })).toBeInTheDocument();
+  });
+
+  test("asking again after a dropped connection brings the screen back", async () => {
+    api.get.mockRejectedValueOnce({ response: { status: 500, data: {} } });
+    signedInAs(null);
+    renderGuarded("messages.read");
+
+    const retry = await screen.findByRole("button", { name: "أعد المحاولة" });
+    api.get.mockResolvedValue({
+      data: { id: 1, name: "من يعمل", email: "a@b.c", role: "editor" },
+    });
+    userEvent.click(retry);
+
+    expect(await screen.findByText("محتوى الشاشة")).toBeInTheDocument();
+  });
+
+  test("a refused token still signs the reader out", async () => {
+    api.get.mockRejectedValue({ response: { status: 401, data: {} } });
+    signedInAs(null);
+    renderGuarded("messages.read");
+
+    // A dropped connection keeps the session; a token the server refuses does
+    // not.
+    expect(await screen.findByText("صفحة الدخول")).toBeInTheDocument();
   });
 });
 

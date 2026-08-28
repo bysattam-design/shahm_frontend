@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../store/useAuthStore";
 import { roleCan, requiredRole } from "../utils/capabilities";
 import DashboardLayout from "../components/layout/dashboard/DashboardLayout";
-import { EmptyState, Spinner } from "../components/ui";
+import { Button, EmptyState, Spinner } from "../components/ui";
 
 /**
  * What a reader sees when they are signed in and the screen is not theirs.
@@ -38,6 +38,7 @@ export default function ProtectedRoute({ capability = null }) {
   const { t } = useTranslation();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const identityStatus = useAuthStore((state) => state.identityStatus);
+  const identityError = useAuthStore((state) => state.identityError);
   const role = useAuthStore((state) => state.user?.role);
   const loadUser = useAuthStore((state) => state.loadUser);
 
@@ -49,6 +50,26 @@ export default function ProtectedRoute({ capability = null }) {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  // A connection that dropped at the moment the dashboard opened used to leave
+  // every screen spinning for good: the fetch above only runs while the status
+  // reads `loading`, and a failure used to settle on `unknown`, which nothing
+  // ever moved off. It is said now, with the reason and a way back.
+  if (identityStatus === "failed") {
+    return (
+      <DashboardLayout>
+        <EmptyState
+          title={t("states.error_title", "تعذر جلب البيانات")}
+          hint={identityError || t("states.error_hint", "تحقق من الاتصال ثم أعد المحاولة.")}
+          action={
+            <Button onClick={() => loadUser()}>
+              {t("states.retry", "أعد المحاولة")}
+            </Button>
+          }
+        />
+      </DashboardLayout>
+    );
   }
 
   // Deciding permission before the account is known would refuse the reader

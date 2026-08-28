@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { getCurrentUser, login as loginApi } from "../api/authApi";
+import { parseApiError } from "../utils/apiErrors";
 import {
   clearTokens,
   readAccessToken,
@@ -21,6 +22,7 @@ import {
  *   unknown  — no token; nobody is signed in
  *   loading  — a token is stored and the account is being fetched
  *   ready    — the account is known
+ *   failed   — the fetch did not answer, and the reader can ask again
  */
 export const useAuthStore = create((set, get) => ({
   user: null,
@@ -28,6 +30,7 @@ export const useAuthStore = create((set, get) => ({
   refreshToken: readRefreshToken(),
   isAuthenticated: !!readAccessToken(),
   identityStatus: readAccessToken() ? "loading" : "unknown",
+  identityError: "",
 
   /**
    * Fetches the account behind the stored token. Runs once when the app opens.
@@ -36,19 +39,19 @@ export const useAuthStore = create((set, get) => ({
    */
   loadUser: async () => {
     if (!get().accessToken) {
-      set({ user: null, identityStatus: "unknown", isAuthenticated: false });
+      set({ user: null, identityStatus: "unknown", identityError: "", isAuthenticated: false });
       return null;
     }
 
     try {
       const res = await getCurrentUser();
 
-      set({ user: res.data, identityStatus: "ready", isAuthenticated: true });
+      set({ user: res.data, identityStatus: "ready", identityError: "", isAuthenticated: true });
 
       return res.data;
     } catch (error) {
       // A cancelled or offline request is not a refusal: keep the session and
-      // let the caller try again, rather than signing an editor out for a
+      // let the reader try again, rather than signing an editor out for a
       // dropped connection.
       const status = error?.response?.status;
 
@@ -57,7 +60,15 @@ export const useAuthStore = create((set, get) => ({
         return null;
       }
 
-      set({ identityStatus: "unknown" });
+      // `unknown` was the answer here, and it was a dead end: the guard only
+      // fetches while the status reads `loading`, so a dropped connection at
+      // the moment the dashboard opened left every screen spinning with
+      // nothing said and no way back. A failure is now a state of its own,
+      // and it carries the reason so the reader is told and can ask again.
+      set({
+        identityStatus: "failed",
+        identityError: parseApiError(error).message,
+      });
       return null;
     }
   },
@@ -76,6 +87,7 @@ export const useAuthStore = create((set, get) => ({
         user,
         isAuthenticated: true,
         identityStatus: "ready",
+        identityError: "",
       });
 
       return true;
@@ -93,6 +105,7 @@ export const useAuthStore = create((set, get) => ({
       refreshToken: null,
       isAuthenticated: false,
       identityStatus: "unknown",
+      identityError: "",
     });
   },
 }));
