@@ -588,7 +588,7 @@ export default function FooterCms() {
                 <div className="cms-footer-form-row">
                   <div className="cms-footer-form-group">
                     <label className="cms-footer-label">
-                      Key
+                      {t("cms.footer.key_label", "المفتاح")}
                     </label>
 
                     <input
@@ -778,7 +778,7 @@ export default function FooterCms() {
                 <div className="cms-footer-form-row">
                   <div className="cms-footer-form-group">
                     <label className="cms-footer-label">
-                      Key
+                      {t("cms.footer.key_label", "المفتاح")}
                     </label>
 
                     <input

@@ -313,7 +313,7 @@ export default function Users() {
           <Table>
             <THead>
               <TR>
-                <TH>ID</TH>
+                <TH>{t("cms.users.table.id", "المعرف")}</TH>
                 <TH>{t("cms.users.table.email")}</TH>
                 <TH>{t("cms.users.table.role")}</TH>
                 <TH>{t("cms.users.table.active")}</TH>

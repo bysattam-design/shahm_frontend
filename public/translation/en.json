@@ -93,8 +93,8 @@
       "business_sector": "Business Sector"
     },
     "client_privileges": {
-      "title": "Client Privileges",
-      "description": "Discover the tailored privileges & added benefits available for both business & individual clients."
+      "title": "Beneficiary Privileges",
+      "description": "Tailored privileges and added benefits for business and individual beneficiaries."
     },
     "quick_access": {
       "title": "Quick Access"
@@ -133,7 +133,7 @@
     "delete_success": "Deleted successfully",
     "logs": "Sent Messages Log",
     "recipients_count": "Recipients Count",
-    "recipients_list": "Emails",
+    "recipients_list": "Email addresses",
     "no_logs": "No sent messages",
     "name": "Name",
     "email": "Email",
@@ -245,7 +245,7 @@
     },
     "service_advisory": {
       "title": "Service Advisory Management",
-      "subtitle": "Manage service advisory page content and client requests",
+      "subtitle": "Manage the advisory page content and beneficiary requests",
       "content_title": "Advisory Page Content",
       "content_subtitle": "Edit texts and descriptions shown on the service page",
       "services_title": "Manage Available Services",
@@ -359,8 +359,8 @@
       "status": {
         "new": "New",
         "reviewing": "Reviewing",
-        "awaiting_client": "Awaiting Client",
-        "client_updated": "Client Updated",
+        "awaiting_client": "Awaiting the beneficiary",
+        "client_updated": "Updated by the beneficiary",
         "contracting": "Contracting",
         "closed": "Closed",
         "cancelled": "Cancelled"
@@ -399,7 +399,7 @@
         "readonly": "readonly"
       },
       "access": {
-        "title": "Client Access Links",
+        "title": "Beneficiary access links",
         "new_link": "New Link",
         "create_btn": "Create Link",
         "form": "Access Form",
@@ -419,7 +419,7 @@
         "regenerate": "Regenerate",
         "revoke": "Revoke",
         "revoke_title": "Revoke this link?",
-        "revoke_text": "The client will no longer be able to use this link.",
+        "revoke_text": "The beneficiary will no longer be able to use this link.",
         "revoke_btn": "Revoke",
         "revoked": "Link revoked",
         "revoke_failed": "Revoke failed",
@@ -448,7 +448,7 @@
         "old_value": "Old Value",
         "new_value": "New Value",
         "edited_by_admin": "Edited by admin",
-        "edited_by_client": "Edited by client",
+        "edited_by_client": "Edited by the beneficiary",
         "unknown_editor": "Unknown editor"
       },
       "creating": "Creating…"
@@ -527,7 +527,7 @@
       "fields": {
         "description_ar": "Description (Arabic)",
         "description_en": "Description (English)",
-        "slug": "Slug / Path",
+        "slug": "Path",
         "parent": "Parent Item",
         "order": "Display Order",
         "is_active": "Active",
@@ -676,7 +676,8 @@
       "logo_en_label": "Logo (English)",
       "vat_logo_label": "VAT Logo",
       "settings_saved": "Settings saved successfully",
-      "newsletter_info": "Newsletter title is managed from Footer Settings tab. The subscription form UI is fixed."
+      "newsletter_info": "Newsletter title is managed from Footer Settings tab. The subscription form UI is fixed.",
+      "key_label": "Key"
     },
     "services": {
       "title": "Services Management",
@@ -823,7 +824,8 @@
           "updated": "Service updated",
           "deleted": "Service deleted",
           "toggled": "Status updated"
-        }
+        },
+        "slug": "Slug"
       },
       "sections": {
         "title": "Service Sections",
@@ -1267,7 +1269,8 @@
         "name": "Name",
         "role": "Role",
         "active": "Active",
-        "actions": "Actions"
+        "actions": "Actions",
+        "id": "ID"
       },
       "success": {
         "user_created": "User created successfully!",
@@ -1373,7 +1376,7 @@
         "auto_reply_email": "noreply@example.com",
         "phone": "+966 XX XXX XXXX",
         "whatsapp": "+966 XX XXX XXXX",
-        "address": "Enter office address",
+        "address": "Enter the firm address",
         "map": "Enter Google Maps Embed code",
         "linkedin": "https://linkedin.com/company/...",
         "x": "https://x.com/...",
@@ -1821,7 +1824,7 @@
         },
         "modal": {
           "title": "Booking",
-          "details": "Client Information",
+          "details": "Beneficiary details",
           "appointment_details": "Appointment Details",
           "date": "Date",
           "time": "Time",
@@ -2807,7 +2810,7 @@
   "blog": {
     "page_title": "News & Insights",
     "last_update": "Last Update",
-    "last_update_description": "Sign up to receive alerts from Shahm Attorneys at Law on arbitration blog.",
+    "last_update_description": "Sign up for updates from the Shahm Attorneys & Consultants blog.",
     "filter_news": "News",
     "filter_insights": "Insights",
     "filter_category": "Category",
@@ -2830,20 +2833,20 @@
     "related_services": "Related Services",
     "request_service": "Request Service",
     "service_card_title_1": "Dispute Evaluation & Roadmap",
-    "service_card_desc_1": "A concise assessment of the dispute and its supporting documents to identify the client's legal position, key risks, and viable options. Delivered as a clear action roadmap outlining the recommended next steps and required documents.",
+    "service_card_desc_1": "A concise assessment of the dispute and its supporting documents to identify the beneficiary's legal position, key risks, and workable options. Delivered as a clear road map setting out the next steps",
     "service_type_1": "Legal Consultations",
     "service_card_title_2": "Dispute Evaluation & Roadmap",
-    "service_card_desc_2": "A concise assessment of the dispute and its supporting documents to identify the client's legal position, key risks, and viable options.",
+    "service_card_desc_2": "A concise assessment of the dispute and its supporting documents to identify the beneficiary's legal position, key risks, and workable options.",
     "service_type_2": "Litigation & Advocacy",
     "service_card_title_3": "Dispute Evaluation & Roadmap",
-    "service_card_desc_3": "A concise assessment of the dispute and its supporting documents to identify the client's legal position and key risks.",
+    "service_card_desc_3": "A concise assessment of the dispute and its supporting documents to identify the beneficiary's legal position and key risks.",
     "service_type_3": "Legal Services",
     "service_card_title_4": "Dispute Evaluation & Roadmap",
-    "service_card_desc_4": "A concise assessment of the dispute and its supporting documents to identify the client's legal position.",
+    "service_card_desc_4": "A concise assessment of the dispute and its supporting documents to identify the beneficiary's legal position.",
     "service_type_4": "Legal Representation",
     "explore_report": "Explore the report",
     "interested_in_content": "Interested in this content?",
-    "explore_preferences": "Sign up to receive alerts from Shahm Attorneys at Law on arbitration blog",
+    "explore_preferences": "Sign up for updates from the Shahm Attorneys & Consultants blog",
     "register_preferences": "Register or update your preferences",
     "preference_article": "Article",
     "preference_news": "News",
@@ -2904,7 +2907,7 @@
   },
   "appointment": {
     "terms_title": "Before Submitting Your Appointment",
-    "terms_description": "Booking an appointment is a paid session intended for clients who need a live discussion before proceeding. It is typically suitable if you: prefer to explain your matter verbally due to extensive details, want to get to know the firm before assigning any work, or have multiple matters/cases and need to define the direction and priorities. If your required service is available in the website's service list, you can receive a fee quote by submitting a Legal Service Request; therefore, this option is more appropriate than booking an appointment.",
+    "terms_description": "Booking an appointment is a paid session intended for beneficiaries who need a live discussion before proceeding. It is typically suitable if you: prefer to explain your matter verbally due to extensive details, want to get to know the firm before assigning any work, or have multiple matters/cases and need to define the direction and priorities. If your required service is available in the website's service list, you can receive a fee quote by submitting a Legal Service Request; therefore, this option is more appropriate than booking an appointment.",
     "appointment_details": "Your Appointment Details",
     "required_fields": "*Required fields",
     "appointment_type": "*Appointment Type",
@@ -3029,5 +3032,15 @@
       "invalid": "Not a colour code. Use #RRGGBB.",
       "reset": "Restore the default colours"
     }
+  },
+  "states": {
+    "loading": "Loading",
+    "empty": "Nothing here yet",
+    "empty_hint": "Nothing has been added yet.",
+    "error_title": "Could not load the data",
+    "error_hint": "Check the connection, then try again.",
+    "retry": "Try again",
+    "save_failed": "Could not save",
+    "field_rejected": "The server refused this field"
   }
 }

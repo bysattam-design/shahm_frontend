@@ -207,7 +207,7 @@ export default function Services() {
                   value={editing.serial_number || "—"} readOnly />
               </div>
               <div className="cms-services-form-group">
-                <label className="cms-services-label">Slug</label>
+                <label className="cms-services-label">{t("cms.services.services.slug", "المسار")}</label>
                 <input className="cms-services-input cms-services-input--readonly" dir="ltr"
                   value={editing.slug || "—"} readOnly />
               </div>
