@@ -59,66 +59,68 @@ import EmailTemplates from "../pages/dashboard/email/EmailTemplates";
 export default function DashboardRoutes() {
   return (
     /*
-     * Single auth guard + DashboardLayout wrapper.
-     * Every child below is automatically protected and rendered
-     * inside DashboardLayout via <Outlet />.
+     * One guard per capability, so a screen is offered only to a reader who
+     * may use it. The paths are unchanged — only the guard above them is.
+     *
+     * The dashboard used to hang every screen under a single guard that
+     * checked nothing but the token, so a viewer could open user
+     * administration and the mail templates; the server refused the requests
+     * behind them and the screen came up empty with nothing said.
      */
-    <Route element={<ProtectedRoute />}>
+    <>
+      {/* ── Anyone signed in ── */}
+      <Route element={<ProtectedRoute capability="dashboard.view" />}>
+        <Route path="/dashboard" element={<DashboardHome />} />
+      </Route>
 
-      {/* ---------------- Dashboard Home ---------------- */}
-      <Route path="/dashboard" element={<DashboardHome />} />
+      <Route element={<ProtectedRoute capability="messages.read" />}>
+        <Route path="/dashboard/messages" element={<MessagesDashboard />} />
+        <Route path="/dashboard/messages/:id" element={<MessageView />} />
+      </Route>
 
-      {/* ---------------- Users ---------------- */}
-      <Route path="/dashboard/users" element={<Users />} />
+      {/* ── Editing the site ── */}
+      <Route element={<ProtectedRoute capability="content.edit" />}>
+        <Route path="/dashboard/cms/heroes" element={<CMSHeroes />} />
+        <Route path="/dashboard/cms/legal" element={<CMSLegal />} />
+        <Route path="/dashboard/cms/faq" element={<CMSFAQ />} />
+        <Route path="/dashboard/cms/header" element={<CMSHeader />} />
+        <Route path="/dashboard/cms/footer" element={<CMSFooter />} />
+        <Route path="/dashboard/cms/contact" element={<CMSContact />} />
+        <Route path="/dashboard/cms/about" element={<CMSAbout />} />
+        <Route path="/admin/forms" element={<CMSForms />} />
+      </Route>
 
+      <Route element={<ProtectedRoute capability="services.manage" />}>
+        <Route path="/dashboard/services" element={<ServicesManage />} />
+        <Route path="/dashboard/appointments" element={<AppointmentsCMS />} />
+      </Route>
 
-      {/* ---------------- CMS — Heroes / Legal ---------------- */}
-      <Route path="/dashboard/cms/heroes" element={<CMSHeroes />} />
-      <Route path="/dashboard/cms/legal" element={<CMSLegal />} />
+      <Route element={<ProtectedRoute capability="blog.edit" />}>
+        <Route path="/dashboard/blog" element={<BlogManage />} />
+      </Route>
 
-      {/* ---------------- CMS — FAQ ---------------- */}
-      <Route path="/dashboard/cms/faq" element={<CMSFAQ />} />
+      <Route element={<ProtectedRoute capability="careers.manage" />}>
+        <Route path="/dashboard/careers" element={<CareersCMS />} />
+        <Route path="/dashboard/careers/applications" element={<CareerApplicationsCMS />} />
+      </Route>
 
-      {/* ---------------- CMS — Header & Footer ---------------- */}
-      <Route path="/dashboard/cms/header" element={<CMSHeader />} />
-      <Route path="/dashboard/cms/footer" element={<CMSFooter />} />
+      <Route element={<ProtectedRoute capability="seo.manage" />}>
+        <Route path="/dashboard/seo" element={<SEOSettings />} />
+      </Route>
 
-      {/* ---------------- CMS — Contact ---------------- */}
-      <Route path="/dashboard/cms/contact" element={<CMSContact />} />
+      {/* ── Running the account ── */}
+      <Route element={<ProtectedRoute capability="users.manage" />}>
+        <Route path="/dashboard/users" element={<Users />} />
+      </Route>
 
-      {/* ---------------- CMS — About ---------------- */}
-      <Route path="/dashboard/cms/about" element={<CMSAbout />} />
+      <Route element={<ProtectedRoute capability="settings.manage" />}>
+        <Route path="/dashboard/settings" element={<Settings />} />
+      </Route>
 
-      {/* ---------------- Admin — Form ---------------- */}
-      <Route path="/admin/forms" element={<CMSForms />} />
-
-      {/* ---------------- Services ---------------- */}
-      <Route path="/dashboard/services" element={<ServicesManage />} />
-
-      {/* ---------------- Appointments ---------------- */}
-      <Route path="/dashboard/appointments" element={<AppointmentsCMS />} />
-
-      {/* ---------------- Careers / Jobs ---------------- */}
-      <Route path="/dashboard/careers" element={<CareersCMS />} />
-      <Route path="/dashboard/careers/applications" element={<CareerApplicationsCMS />} />
-
-      {/* ---------------- Blog ---------------- */}
-      <Route path="/dashboard/blog" element={<BlogManage />} />
-
-      {/* ---------------- Messages ---------------- */}
-      <Route path="/dashboard/messages" element={<MessagesDashboard />} />
-      <Route path="/dashboard/messages/:id" element={<MessageView />} />
-
-      {/* ---------------- SEO ---------------- */}
-      <Route path="/dashboard/seo" element={<SEOSettings />} />
-
-      {/* ---------------- Settings ---------------- */}
-      <Route path="/dashboard/settings" element={<Settings />} />
-
-      {/* ---------------- Email ---------------- */}
-      <Route path="/dashboard/email-settings" element={<EmailSettings />} />
-      <Route path="/dashboard/email-templates" element={<EmailTemplates />} />
-
-    </Route>
+      <Route element={<ProtectedRoute capability="email.manage" />}>
+        <Route path="/dashboard/email-settings" element={<EmailSettings />} />
+        <Route path="/dashboard/email-templates" element={<EmailTemplates />} />
+      </Route>
+    </>
   );
 }

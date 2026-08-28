@@ -3042,5 +3042,18 @@
     "retry": "Try again",
     "save_failed": "Could not save",
     "field_rejected": "The server refused this field"
+  },
+  "permissions": {
+    "denied_title": "This screen is not yours to open",
+    "denied_hint": "It needs the {{role}} role. Ask the general manager.",
+    "denied_hint_plain": "Ask the general manager for access.",
+    "action_denied": "This action is not yours",
+    "action_denied_needs": "It needs the {{role}} role",
+    "role": {
+      "viewer": "Viewer",
+      "editor": "Editor",
+      "admin": "Admin",
+      "super_admin": "General manager"
+    }
   }
 }

@@ -3,6 +3,7 @@ import React from "react";
 import { NavLink } from "react-router-dom";
 import { useAuthStore } from "../../../store/useAuthStore";
 import { useTranslation } from "react-i18next";
+import useCan from "../../../hooks/useCan";
 import "../../../styles/layout/dashboard/sidebar.css";
 
 const SectionIcons = {
@@ -44,8 +45,8 @@ export default function DashboardSidebar({
   onClose,
   isCollapsed,
   onToggleCollapse,
-  openSections,
-  onToggleSection,
+  openSections = {},
+  onToggleSection = () => {},
 }) {
   const { logout } = useAuthStore();
   const { t, i18n } = useTranslation();
@@ -60,53 +61,66 @@ export default function DashboardSidebar({
     i18n.changeLanguage(newLang);
   };
 
+  const { can } = useCan();
+
   const sections = [
     {
       title: t("sidebar.general"),
       iconKey: "general",
       items: [
-        { to: "/dashboard", label: t("sidebar.home"), end: true },
-        { to: "/dashboard/messages", label: t("sidebar.messages") },
+        { to: "/dashboard", label: t("sidebar.home"), end: true, cap: "dashboard.view" },
+        { to: "/dashboard/messages", label: t("sidebar.messages"), cap: "messages.read" },
       ],
     },
     {
       title: t("sidebar.content"),
       iconKey: "content",
       items: [
-        { to: "/dashboard/cms/heroes", label: t("sidebar.cms_heroes") },
-        { to: "/dashboard/cms/about", label: t("sidebar.cms_about") },
-        { to: "/admin/forms", label: t("sidebar.forms") },
+        { to: "/dashboard/cms/heroes", label: t("sidebar.cms_heroes"), cap: "content.edit" },
+        { to: "/dashboard/cms/about", label: t("sidebar.cms_about"), cap: "content.edit" },
+        { to: "/admin/forms", label: t("sidebar.forms"), cap: "content.edit" },
         // { to: "/dashboard/cms/pages", label: t("sidebar.cms_pages") },
-        { to: "/dashboard/cms/legal", label: t("sidebar.cms_legal") },
-        { to: "/dashboard/cms/faq", label: t("sidebar.cms_faq") },
-        { to: "/dashboard/cms/contact", label: t("sidebar.cms_contact") },
-        { to: "/dashboard/cms/header", label: t("sidebar.cms_header") },
-        { to: "/dashboard/cms/footer", label: t("sidebar.cms_footer") },
+        { to: "/dashboard/cms/legal", label: t("sidebar.cms_legal"), cap: "content.edit" },
+        { to: "/dashboard/cms/faq", label: t("sidebar.cms_faq"), cap: "content.edit" },
+        { to: "/dashboard/cms/contact", label: t("sidebar.cms_contact"), cap: "content.edit" },
+        { to: "/dashboard/cms/header", label: t("sidebar.cms_header"), cap: "content.edit" },
+        { to: "/dashboard/cms/footer", label: t("sidebar.cms_footer"), cap: "content.edit" },
       ],
     },
     {
       title: t("sidebar.management"),
       iconKey: "management",
       items: [
-        { to: "/dashboard/services", label: t("sidebar.services") },
-        { to: "/dashboard/appointments", label: t("sidebar.appointments") },
-        { to: "/dashboard/blog", label: t("sidebar.blog") },
-        { to: "/dashboard/careers", label: t("sidebar.careers") },
-        { to: "/dashboard/careers/applications", label: t("sidebar.applications") },
-        { to: "/dashboard/users", label: t("sidebar.users") },
+        { to: "/dashboard/services", label: t("sidebar.services"), cap: "services.manage" },
+        { to: "/dashboard/appointments", label: t("sidebar.appointments"), cap: "services.manage" },
+        { to: "/dashboard/blog", label: t("sidebar.blog"), cap: "blog.edit" },
+        { to: "/dashboard/careers", label: t("sidebar.careers"), cap: "careers.manage" },
+        { to: "/dashboard/careers/applications", label: t("sidebar.applications"), cap: "careers.manage" },
+        { to: "/dashboard/users", label: t("sidebar.users"), cap: "users.manage" },
       ],
     },
     {
       title: t("sidebar.settings"),
       iconKey: "settings",
       items: [
-        { to: "/dashboard/seo", label: t("sidebar.seo") },
-        { to: "/dashboard/settings", label: t("sidebar.system_settings") },
-        { to: "/dashboard/email-settings", label: t("sidebar.email_settings") },
-        { to: "/dashboard/email-templates", label: t("sidebar.email_templates") },
+        { to: "/dashboard/seo", label: t("sidebar.seo"), cap: "seo.manage" },
+        { to: "/dashboard/settings", label: t("sidebar.system_settings"), cap: "settings.manage" },
+        { to: "/dashboard/email-settings", label: t("sidebar.email_settings"), cap: "email.manage" },
+        { to: "/dashboard/email-templates", label: t("sidebar.email_templates"), cap: "email.manage" },
       ],
     },
   ];
+
+  // A reader is not offered a door they cannot open. The screens behind these
+  // links refuse the requests anyway, so an unfiltered sidebar only led a
+  // viewer to an empty page with nothing said. A group left with no item at
+  // all disappears with its heading.
+  const visibleSections = sections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => !item.cap || can(item.cap)),
+    }))
+    .filter((section) => section.items.length > 0);
 
   const arrowPath = isRTL ? "M9 3L5 7L9 11" : "M5 3L9 7L5 11";
 
@@ -138,17 +152,21 @@ export default function DashboardSidebar({
       {/* ── Navigation ── */}
       <nav className="dashboard-sidebar-nav">
         <div className="dashboard-sidebar-nav-scroll">
-        {sections.map((section, idx) => {
-          const isExpanded = openSections[idx] !== false;
+        {visibleSections.map((section, idx) => {
+          // Keyed by the section itself, not by its position: the list is
+          // filtered by what the reader may open, so positions shift from one
+          // role to the next and a collapsed group would carry its state over
+          // to whichever group happened to land in its place.
+          const isExpanded = openSections?.[section.iconKey] !== false;
           return (
             <div
-              key={idx}
+              key={section.iconKey}
               className={`dashboard-sidebar-nav-section ${isExpanded && !isCollapsed ? "section-expanded" : "section-collapsed"}`}
               style={{ animationDelay: `${0.08 + idx * 0.06}s` }}
             >
               <button
                 className="dashboard-sidebar-nav-title"
-                onClick={() => onToggleSection(idx)}
+                onClick={() => onToggleSection(section.iconKey)}
                 aria-expanded={isExpanded && !isCollapsed}
                 title={isCollapsed ? section.title : undefined}
                 type="button"

@@ -5,6 +5,7 @@ export const API_PATHS = freeze({
   auth: freeze({
     login: "/accounts/login/",
     refresh: "/accounts/refresh/",
+    me: "/accounts/me/",
     users: "/accounts/users/",
     createUser: "/accounts/users/create/",
     user: (id) => `/accounts/users/${id}/`,

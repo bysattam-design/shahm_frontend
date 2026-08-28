@@ -3002,5 +3002,18 @@
     "retry": "أعد المحاولة",
     "save_failed": "تعذر الحفظ",
     "field_rejected": "رفض الخادم هذا الحقل"
+  },
+  "permissions": {
+    "denied_title": "هذه الشاشة ليست ضمن صلاحيتك",
+    "denied_hint": "تحتاج صلاحية {{role}}. راجع المدير العام.",
+    "denied_hint_plain": "راجع المدير العام لطلب الصلاحية.",
+    "action_denied": "لا تملك هذا الإجراء",
+    "action_denied_needs": "يحتاج صلاحية {{role}}",
+    "role": {
+      "viewer": "قارئ",
+      "editor": "محرر",
+      "admin": "مدير",
+      "super_admin": "المدير العام"
+    }
   }
 }

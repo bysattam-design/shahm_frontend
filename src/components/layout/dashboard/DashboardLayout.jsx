@@ -19,16 +19,23 @@ export default function DashboardLayout({ children }) {
   const isRTL = i18n.language === "ar";
 
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [openSections, setOpenSections] = useState({ 0: true, 1: true, 2: true, 3: true });
+  // Keyed by section, not by position — the sidebar hides groups the reader
+  // may not open, so positions differ from one role to the next.
+  const [openSections, setOpenSections] = useState({
+    general: true,
+    content: true,
+    management: true,
+    settings: true,
+  });
 
   const toggleCollapse = () => setIsCollapsed((v) => !v);
 
-  const toggleSection = (idx) => {
+  const toggleSection = (key) => {
     if (isCollapsed) {
       setIsCollapsed(false);
-      setOpenSections((prev) => ({ ...prev, [idx]: true }));
+      setOpenSections((prev) => ({ ...prev, [key]: true }));
     } else {
-      setOpenSections((prev) => ({ ...prev, [idx]: !prev[idx] }));
+      setOpenSections((prev) => ({ ...prev, [key]: prev[key] === false }));
     }
   };
 
