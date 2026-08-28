@@ -1169,3 +1169,16 @@
   color: var(--cb-secondary, #7C8D8D);
   text-align: center;
 }
+/* The server's own words about a refused save, above the buttons that will
+   be pressed again. Follows the theme rather than carrying its own colour. */
+.blog-form-error {
+  margin-block: 12px 0;
+  padding: 10px 14px;
+  border: 1px solid var(--t-line, currentColor);
+  border-inline-start-width: 3px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--t-ink, inherit);
+  background: var(--t-surface-sunk, transparent);
+}

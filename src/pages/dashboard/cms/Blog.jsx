@@ -6,6 +6,8 @@ import { useTranslation } from "react-i18next";
 import { useSweetAlert } from "../../../components/common/SweetAlert";
 import Editbtn from "../../../components/common/dashboard/Editbtn";
 import Deletebtn from "../../../components/common/dashboard/Deletebtn";
+import { Button, EmptyState, Spinner as UiSpinner } from "../../../components/ui";
+import "../../../styles/forms/cms-form.css";
 import "../../../styles/dashboard/cms/blog.css";
 import SunEditor from "suneditor-react";
 import "suneditor/dist/css/suneditor.min.css";
@@ -100,12 +102,57 @@ const EMPTY_POST = {
 /* ══════════════════════════════════════════════════════
    MAIN COMPONENT
 ══════════════════════════════════════════════════════ */
+/**
+ * Says what the server said, and hands back what belongs on the fields.
+ *
+ * Every handler on this screen answered a refusal with one generic key —
+ * «فشل حفظ التصنيف» — and dropped the message the store had already captured.
+ * The three delete handlers were worse: they never looked at the answer at
+ * all and announced success either way.
+ */
+function reportRefusal(result, fallback) {
+  const message = result?.message || "";
+
+  if (!result?.canceled) toast.error(message || fallback);
+
+  return { fields: result?.fields || {}, message };
+}
+
+/** The server's word about one field, where that field lives. */
+function FieldError({ message }) {
+  if (!message) return null;
+
+  return (
+    <span className="sf-field__error" role="alert">
+      {message}
+    </span>
+  );
+}
+
+/** The server's word about the whole form, above its buttons. */
+function FormError({ message }) {
+  if (!message) return null;
+
+  return (
+    <div className="blog-form-error" role="alert">
+      {message}
+    </div>
+  );
+}
+
 export default function BlogCms() {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === "ar";
   const { alert: sweetAlertEl, show: showAlert } = useSweetAlert();
 
   const [activeTab, setActiveTab] = useState("settings");
+
+  // What the first load did, and what the server refused on each form.
+  const [pageState, setPageState] = useState({ status: "loading", message: "" });
+  const [settingsErrors, setSettingsErrors] = useState({ fields: {}, message: "" });
+  const [catErrors, setCatErrors] = useState({ fields: {}, message: "" });
+  const [tagErrors, setTagErrors] = useState({ fields: {}, message: "" });
+  const [postErrors, setPostErrors] = useState({ fields: {}, message: "" });
   const [loading, setLoading] = useState({});
   const setLoadingKey = (key, val) =>
     setLoading((prev) => ({ ...prev, [key]: val }));
@@ -141,9 +188,35 @@ export default function BlogCms() {
 
   /* ══ Load data on mount ══ */
   const loadSettings = useCallback(async () => {
-    const data = await fetchBlogSettings();
-    if (data) setSettingsForm(data);
+    const result = await fetchBlogSettings();
+    if (result?.success && result.data) setSettingsForm(result.data);
+    return result;
   }, [fetchBlogSettings]);
+
+  /**
+   * The screen used to render its forms over empty lists whatever the server
+   * answered, so an outage was indistinguishable from a blog with nothing in
+   * it. `quiet` is for the refresh after a write, which should not blink the
+   * whole screen back to loading.
+   */
+  const loadAll = useCallback(async ({ quiet = false } = {}) => {
+    if (!quiet) setPageState({ status: "loading", message: "" });
+
+    const results = await Promise.all([
+      fetchCategories(),
+      fetchTags(),
+      fetchPosts(),
+      loadSettings(),
+    ]);
+
+    const refused = results.find((r) => r && !r.success && !r.canceled);
+
+    setPageState(
+      refused
+        ? { status: "failed", message: refused.message }
+        : { status: "ready", message: "" }
+    );
+  }, [fetchCategories, fetchTags, fetchPosts, loadSettings]);
 
   const EDITOR_OPTIONS = {
     height: 260,
@@ -174,22 +247,24 @@ export default function BlogCms() {
   };
 
   useEffect(() => {
-    fetchCategories();
-    fetchTags();
-    fetchPosts();
-    loadSettings();
-  }, [fetchCategories, fetchPosts, fetchTags, loadSettings]);
+    loadAll();
+  }, [loadAll]);
 
   /* ══════════════════════════════════════════════════════
      SETTINGS
   ══════════════════════════════════════════════════════ */
   const saveSettings = async () => {
     setLoadingKey("settings", true);
-    await new Promise((r) => setTimeout(r, 700));
     const result = await updateBlogSettings(settingsForm);
     setLoadingKey("settings", false);
-    if (result.success) toast.success(t("cms.blog.success.settings_saved"));
-    else toast.error(t("cms.blog.errors.settings_failed"));
+
+    if (result.success) {
+      setSettingsErrors({ fields: {}, message: "" });
+      toast.success(t("cms.blog.success.settings_saved"));
+      return;
+    }
+
+    setSettingsErrors(reportRefusal(result, t("cms.blog.errors.settings_failed")));
   };
 
   /* ══════════════════════════════════════════════════════
@@ -209,19 +284,20 @@ export default function BlogCms() {
 
     const key = editingCat ? `cat-update-${editingCat.id}` : "cat-create";
     setLoadingKey(key, true);
-    await new Promise((r) => setTimeout(r, 700));
     const result = editingCat
       ? await updateCategory(editingCat.id, payload)
       : await createCategory(payload);
     setLoadingKey(key, false);
 
     if (result.success) {
+      setCatErrors({ fields: {}, message: "" });
       toast.success(t("cms.blog.success.category_saved"));
       setCatForm({ name_ar: "", name_en: "", slug: "", color: "#353C3C", icon: null });
       setEditingCat(null);
-    } else {
-      toast.error(t("cms.blog.errors.category_failed"));
+      return;
     }
+
+    setCatErrors(reportRefusal(result, t("cms.blog.errors.category_failed")));
   };
 
   const handleDeleteCategory = async (id) => {
@@ -236,10 +312,18 @@ export default function BlogCms() {
     });
     if (!confirmed) return;
     setLoadingKey(`cat-delete-${id}`, true);
-    await new Promise((r) => setTimeout(r, 700));
-    await deleteCategory(id);
+    const result = await deleteCategory(id);
     setLoadingKey(`cat-delete-${id}`, false);
-    toast.success(t("cms.blog.success.category_deleted"));
+
+    // The answer used to be thrown away and success announced whatever
+    // happened, so a refused delete left the record on screen under a
+    // notice saying it was gone.
+    if (result?.success) {
+      toast.success(t("cms.blog.success.category_deleted"));
+      return;
+    }
+
+    reportRefusal(result, t("cms.blog.errors.category_failed"));
   };
 
   /* ══════════════════════════════════════════════════════
@@ -254,19 +338,20 @@ export default function BlogCms() {
     };
     const key = editingTag ? `tag-update-${editingTag.id}` : "tag-create";
     setLoadingKey(key, true);
-    await new Promise((r) => setTimeout(r, 700));
     const result = editingTag
       ? await updateTag(editingTag.id, payload)
       : await createTag(payload);
     setLoadingKey(key, false);
 
     if (result.success) {
+      setTagErrors({ fields: {}, message: "" });
       toast.success(t("cms.blog.success.tag_saved"));
       setTagForm({ name_ar: "", name_en: "", slug: "" });
       setEditingTag(null);
-    } else {
-      toast.error(t("cms.blog.errors.tag_failed"));
+      return;
     }
+
+    setTagErrors(reportRefusal(result, t("cms.blog.errors.tag_failed")));
   };
 
   const handleDeleteTag = async (id) => {
@@ -281,10 +366,18 @@ export default function BlogCms() {
     });
     if (!confirmed) return;
     setLoadingKey(`tag-delete-${id}`, true);
-    await new Promise((r) => setTimeout(r, 700));
-    await deleteTag(id);
+    const result = await deleteTag(id);
     setLoadingKey(`tag-delete-${id}`, false);
-    toast.success(t("cms.blog.success.tag_deleted"));
+
+    // The answer used to be thrown away and success announced whatever
+    // happened, so a refused delete left the record on screen under a
+    // notice saying it was gone.
+    if (result?.success) {
+      toast.success(t("cms.blog.success.tag_deleted"));
+      return;
+    }
+
+    reportRefusal(result, t("cms.blog.errors.tag_failed"));
   };
 
   /* ══════════════════════════════════════════════════════
@@ -385,21 +478,22 @@ export default function BlogCms() {
 
     const key = editPost ? `post-update-${editPost.id}` : "post-create";
     setLoadingKey(key, true);
-    await new Promise((r) => setTimeout(r, 700));
     const result = editPost
       ? await updatePost(editPost.id, fd)
       : await createPost(fd);
     setLoadingKey(key, false);
 
     if (result.success) {
+      setPostErrors({ fields: {}, message: "" });
       toast.success(editPost
         ? t("cms.blog.success.post_updated")
         : t("cms.blog.success.post_created")
       );
       resetPostForm();
-    } else {
-      toast.error(t("cms.blog.errors.post_failed"));
+      return;
     }
+
+    setPostErrors(reportRefusal(result, t("cms.blog.errors.post_failed")));
   };
 
   const handleDeletePost = async (id) => {
@@ -414,10 +508,18 @@ export default function BlogCms() {
     });
     if (!confirmed) return;
     setLoadingKey(`post-delete-${id}`, true);
-    await new Promise((r) => setTimeout(r, 700));
-    await deletePost(id);
+    const result = await deletePost(id);
     setLoadingKey(`post-delete-${id}`, false);
-    toast.success(t("cms.blog.success.post_deleted"));
+
+    // The answer used to be thrown away and success announced whatever
+    // happened, so a refused delete left the record on screen under a
+    // notice saying it was gone.
+    if (result?.success) {
+      toast.success(t("cms.blog.success.post_deleted"));
+      return;
+    }
+
+    reportRefusal(result, t("cms.blog.errors.post_failed"));
   };
 
   /* ══ Tabs config ══ */
@@ -431,6 +533,46 @@ export default function BlogCms() {
   /* ══════════════════════════════════════════════════════
      RENDER
   ══════════════════════════════════════════════════════ */
+  const header = (
+    <div className="cms-blog-page-header">
+      <div className="cms-blog-page-header-content">
+        <h1 className="cms-blog-title">{t("cms.blog.title")}</h1>
+        <p className="cms-blog-subtitle">{t("cms.blog.subtitle")}</p>
+      </div>
+    </div>
+  );
+
+  // A refused load used to render the forms over three empty lists, so an
+  // outage and an empty blog looked exactly alike.
+  if (pageState.status === "loading") {
+    return (
+      <div className="cms-blog-root">
+        {header}
+        <div style={{ padding: "48px 0", textAlign: "center" }}>
+          <UiSpinner size={20} label={t("states.loading", "جار التحميل")} />
+        </div>
+      </div>
+    );
+  }
+
+  if (pageState.status === "failed") {
+    return (
+      <div className="cms-blog-root">
+        {sweetAlertEl}
+        {header}
+        <EmptyState
+          title={t("states.error_title", "تعذر جلب البيانات")}
+          hint={pageState.message || t("states.error_hint", "تحقق من الاتصال ثم أعد المحاولة.")}
+          action={
+            <Button onClick={() => loadAll()}>
+              {t("states.retry", "أعد المحاولة")}
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="cms-blog-root">
       {sweetAlertEl}
@@ -531,6 +673,7 @@ export default function BlogCms() {
               </div>
             </div>
 
+            <FormError message={settingsErrors.message} />
             <div className="cms-blog-form-actions">
               <button className="cms-blog-btn-primary" onClick={saveSettings}
                 disabled={loading["settings"]}>
@@ -571,15 +714,19 @@ export default function BlogCms() {
                   <input className="cms-blog-input"
                     placeholder={t("cms.blog.fields.category_ar_placeholder")}
                     value={catForm.name_ar}
+                    data-field="name_ar"
                     onChange={(e) => setCatForm({ ...catForm, name_ar: e.target.value })}
                     dir="rtl" />
+                  <FieldError message={catErrors.fields.name_ar} />
                 </div>
                 <div className="cms-blog-form-group">
                   <label className="cms-blog-label">{t("cms.blog.fields.category_en")}</label>
                   <input className="cms-blog-input"
                     placeholder={t("cms.blog.fields.category_en_placeholder")}
                     value={catForm.name_en}
+                    data-field="name_en"
                     onChange={(e) => setCatForm({ ...catForm, name_en: e.target.value })} />
+                  <FieldError message={catErrors.fields.name_en} />
                 </div>
               </div>
 
@@ -616,6 +763,7 @@ export default function BlogCms() {
               </div>
             </div>
 
+            <FormError message={catErrors.message} />
             <div className="cms-blog-form-actions">
               <button className="cms-blog-btn-primary" onClick={saveCategory}
                 disabled={loading[editingCat ? `cat-update-${editingCat.id}` : "cat-create"]}>
@@ -725,8 +873,10 @@ export default function BlogCms() {
                   <input className="cms-blog-input"
                     placeholder={t("cms.blog.fields.tag_ar_placeholder")}
                     value={tagForm.name_ar}
+                    data-field="name_ar"
                     onChange={(e) => setTagForm({ ...tagForm, name_ar: e.target.value })}
                     dir="rtl" />
+                  <FieldError message={tagErrors.fields.name_ar} />
                 </div>
                 <div className="cms-blog-form-group">
                   <label className="cms-blog-label">{t("cms.blog.fields.tag_en")}</label>
@@ -748,6 +898,7 @@ export default function BlogCms() {
               </div>
             </div>
 
+            <FormError message={tagErrors.message} />
             <div className="cms-blog-form-actions">
               <button className="cms-blog-btn-primary" onClick={saveTag}
                 disabled={loading[editingTag ? `tag-update-${editingTag.id}` : "tag-create"]}>
@@ -854,6 +1005,7 @@ export default function BlogCms() {
                   <input className="cms-blog-input" name="title_ar"
                     placeholder={t("cms.blog.fields.title_ar_placeholder")}
                     value={postForm.title_ar} onChange={handlePostChange} dir="rtl" />
+                  <FieldError message={postErrors.fields.title_ar} />
                 </div>
                 <div className="cms-blog-form-group">
                   <label className="cms-blog-label">{t("cms.blog.fields.title_en")}</label>
@@ -1033,6 +1185,7 @@ export default function BlogCms() {
               </button>
             </div>
 
+            <FormError message={postErrors.message} />
             <div className="cms-blog-form-actions">
               <button className="cms-blog-btn-primary" onClick={savePost}
                 disabled={loading[editPost ? `post-update-${editPost.id}` : "post-create"]}>
