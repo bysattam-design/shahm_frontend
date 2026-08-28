@@ -3,8 +3,10 @@
 // Centered, glassy, viewport-fitted, scroll-locked.
 // Tabs: sliding underline indicator — identical to srv-panel__tabs pattern.
 
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+
+import useFocusTrap from "../../../hooks/useFocusTrap";
 
 
 const IconClose = () => (
@@ -57,6 +59,7 @@ export default function Modal({
   headerRight,
   theme = "",
 }) {
+  const titleId = useId();
   const tabsBarRef = useRef(null);
   const tabRefs = useRef([]);
   const [indicator, setIndicator] = useState({ left: "auto", right: "auto", width: 0 });
@@ -68,13 +71,10 @@ export default function Modal({
     return () => document.body.classList.remove("dash-modal-open");
   }, [open]);
 
-  // ── Escape to close ────────────────────────────────────────
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e) => { if (e.key === "Escape") onClose?.(); };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [open, onClose]);
+  // ── The keyboard: held inside while open, given back on close ──
+  // Escape used to be all this dialog did for the keyboard, and it left 38
+  // controls behind the backdrop still reachable by Tab.
+  const dialog = useFocusTrap({ active: open, onEscape: onClose });
 
   // ── Sliding underline indicator — mirrors srv-panel logic exactly ──
   const measureIndicator = useCallback(() => {
@@ -114,16 +114,23 @@ export default function Modal({
   const hasTabs = Array.isArray(tabDefs) && tabDefs.length > 0;
 
   return createPortal(
-    <div className="dash-modal-backdrop" dir={dir} aria-modal="true" role="dialog">
+    <div className="dash-modal-backdrop" dir={dir}>
+      {/* The role and the name belong on the dialog itself. They sat on the
+          backdrop, so a screen reader announced the sheet behind the dialog as
+          the dialog, and the dialog itself had no name at all. */}
       <div
+        ref={dialog}
         className={`dash-modal ${theme} ${className}`}
         style={{ maxWidth: width }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? titleId : undefined}
         onClick={(e) => e.stopPropagation()}
       >
         {/* ── Header ── */}
         <div className="dash-modal-header">
           <div className="dash-modal-header-left">
-            {title && <h2 className="dash-modal-title">{title}</h2>}
+            {title && <h2 className="dash-modal-title" id={titleId}>{title}</h2>}
             {subtitle && <div className="dash-modal-subtitle">{subtitle}</div>}
           </div>
           <div className="dash-modal-header-right">

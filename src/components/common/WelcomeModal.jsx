@@ -4,6 +4,7 @@
 // Logo is imported directly from assets — no prop needed.
 
 import React, { useEffect } from "react";
+import useFocusTrap from "../../hooks/useFocusTrap";
 import { useTranslation } from "react-i18next";
 import Logo from "../../assets/images/logo/WelcomeModal.png";
 import "../../styles/common/welcome-modal.css"; // adjust path to your styles folder
@@ -45,6 +46,11 @@ export default function WelcomeModal({ onSelect }) {
     return () => window.removeEventListener("keydown", block, { capture: true });
   }, []);
 
+  // The keyboard is held inside: this one has to be answered, so Tab must not
+  // be able to leave it for a page the reader has not chosen a language for.
+  // No `onEscape` — refusing Escape is the point of the dialog.
+  const dialog = useFocusTrap({ active: true });
+
   const handleSelect = (lang) => {
     // 1. Persist choice
     localStorage.setItem(LANG_KEY, lang);
@@ -63,14 +69,14 @@ export default function WelcomeModal({ onSelect }) {
 
   return (
     // Backdrop — blocks all clicks behind the modal
-    <div
-      className="wlc-backdrop"
-      onClick={(e) => e.stopPropagation()}
-      aria-modal="true"
-      role="dialog"
-      aria-labelledby="wlc-title-en wlc-title-ar"
-    >
-      <div className="wlc-modal">
+    <div className="wlc-backdrop" onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={dialog}
+        className="wlc-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="wlc-title-en wlc-title-ar"
+      >
 
         {/* Logo — imported from assets */}
         <img

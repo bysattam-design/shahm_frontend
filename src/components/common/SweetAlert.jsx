@@ -1,5 +1,7 @@
 // src/components/SweetAlert.jsx
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+
+import useFocusTrap from "../../hooks/useFocusTrap";
 import "../../styles/common/SweetAlert.css";
 
 /* ─── Icon components ─────────────────────────────── */
@@ -128,11 +130,15 @@ export default function SweetAlert({
     [onConfirm, onCancel]
   );
 
-  /* ── keyboard handling ── */
+  /* ── keyboard handling ──
+     Escape answers no and Enter answers yes, which a confirm should. The trap
+     holds everything else inside: Tab used to walk out of the question and
+     into the page it was asked about. */
+  const box = useFocusTrap({ active: open, onEscape: () => handleClose(false) });
+
   useEffect(() => {
-    if (!open) return;
+    if (!open) return undefined;
     const handler = (e) => {
-      if (e.key === "Escape") handleClose(false);
       if (e.key === "Enter") handleClose(true);
     };
     window.addEventListener("keydown", handler);
@@ -159,12 +165,16 @@ export default function SweetAlert({
       ref={overlayRef}
       className={`sweet-alert-overlay${exiting ? " sweet-alert-overlay--exit" : ""}`}
       onClick={(e) => e.target === overlayRef.current && handleClose(false)}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="sweet-alert-title"
-      aria-describedby="sweet-alert-message"
     >
-      <div className="sweet-alert-box" dir={isRtl ? "rtl" : "ltr"}>
+      <div
+        ref={box}
+        className="sweet-alert-box"
+        dir={isRtl ? "rtl" : "ltr"}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="sweet-alert-title"
+        aria-describedby="sweet-alert-message"
+      >
         {/* Close X */}
         <button
           className="sweet-alert-close"
