@@ -1,5 +1,6 @@
 // Dashboard header CMS
 import React, { useEffect, useState, useCallback, useRef } from "react";
+import UploadLimits, { PICTURE_ACCEPT } from "../../../components/forms/cms/UploadLimits";
 import api from "../../../api/axiosClient";
 import { API_PATHS } from "../../../api/routes";
 import { useTranslation } from "react-i18next";
@@ -805,8 +806,9 @@ export default function HeaderCms() {
                         />
                         <label className="cms-header-btn-upload" style={{ cursor:"pointer" }}>
                           <IcoUpload />{t("cms.header.logo.upload")}
-                          <input type="file" accept="image/*" style={{ display:"none" }}
+                          <input type="file" accept={PICTURE_ACCEPT} style={{ display:"none" }}
                             onChange={(e) => {
+                          <UploadLimits kind="logo_full" />
                               const file = e.target.files[0];
                               if (!file) return;
                               setLogoFiles((prev) => ({ ...prev, [key]: file }));
@@ -821,8 +823,9 @@ export default function HeaderCms() {
                     </div>
                   ) : (
                     <form className="cms-header-logo-upload-form" onSubmit={(e) => handleLogoUpload(e, key)}>
-                      <input type="file" accept="image/*" className="cms-header-input-file"
+                      <input type="file" accept={PICTURE_ACCEPT} className="cms-header-input-file"
                         onChange={(e) => setLogoFiles((prev) => ({ ...prev, [key]: e.target.files[0] }))} />
+                      <UploadLimits kind="logo_full" />
                       <button type="submit" className="cms-header-btn-primary" disabled={isUploading}>
                         {isUploading ? <IcoSpinner /> : <IcoUpload />}
                         {t("cms.header.logo.upload")}
@@ -924,8 +927,9 @@ export default function HeaderCms() {
                   </div>
                   <div className="cms-header-form-group">
                     <label className="cms-header-label">{t("cms.header.fields.image")}</label>
-                    <input type="file" accept="image/*" className="cms-header-input-file"
+                    <input type="file" accept={PICTURE_ACCEPT} className="cms-header-input-file"
                       onChange={handleMenuImageChange} />
+                    <UploadLimits />
                     {menuImageEditId && !menuImageForm.image && (
                       <span className="cms-header-hint">{t("cms.header.menu_images.keep_existing")}</span>
                     )}

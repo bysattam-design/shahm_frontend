@@ -3015,5 +3015,12 @@
       "admin": "مدير",
       "super_admin": "المدير العام"
     }
+  },
+  "uploads": {
+    "formats": "SVG أو PNG أو JPG أو WEBP أو GIF",
+    "max_svg": "حد SVG {{kb}} ك.ب",
+    "max_raster": "حد الصورة {{mb}} م.ب",
+    "recommended": "المقاس الموصى به {{w}}×{{h}}",
+    "max_pixels": "بحد أقصى {{px}} بكسل"
   }
 }

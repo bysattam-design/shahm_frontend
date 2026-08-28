@@ -1,5 +1,6 @@
 // src/pages/dashboard/services/MainServices.jsx
 import React, { useEffect, useState } from "react";
+import UploadLimits, { PICTURE_ACCEPT } from "../../../components/forms/cms/UploadLimits";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import { useSweetAlert } from "../../../components/common/SweetAlert";
@@ -190,7 +191,8 @@ export default function MainServices() {
                 <label className="cms-services-file-label">
                   <IconImage />
                   <span>{t("cms.services.mainServices.choose_icon")}</span>
-                  <input type="file" accept="image/*" className="cms-services-file-input" onChange={handleIconChange} />
+                  <input type="file" accept={PICTURE_ACCEPT} className="cms-services-file-input" onChange={handleIconChange} />
+                  <UploadLimits kind="icon" />
                 </label>
               </div>
             </div>

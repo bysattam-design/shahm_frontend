@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
+import UploadLimits, { PICTURE_ACCEPT } from "../../../components/forms/cms/UploadLimits";
 import { useTranslation } from "react-i18next";
 import { useFaqCmsStore } from "../../../store/useFaqCmsStore";
 import toast from "react-hot-toast";
@@ -451,7 +452,8 @@ export default function FAQCms() {
                       {catIconPreview && <div className="faq-icon-preview"><img src={catIconPreview} alt="preview" /></div>}
                       <label className="faq-file-label">
                         <Icon.Image /><span>{t("cms.faq.category.choose_icon")}</span>
-                        <input type="file" accept=".png,.jpg,.jpeg,.svg" className="faq-file-input" onChange={handleIconChange} />
+                        <input type="file" accept={PICTURE_ACCEPT} className="faq-file-input" onChange={handleIconChange} />
+                        <UploadLimits kind="icon" />
                       </label>
                     </div>
                   </div>

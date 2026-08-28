@@ -368,7 +368,7 @@ export default function Settings() {
                   )}
                 </div>
                 <input className="ss-input-file" type="file"
-                  name="logo_light" onChange={updateField} accept="image/*" />
+                  name="logo_light" onChange={updateField} accept=".svg,.png,.jpg,.jpeg,.webp,.gif" />
               </div>
               <div className="ss-logo-group">
                 <label className="ss-label">{t("cms.settings.fields.logo_dark")}</label>
@@ -378,7 +378,7 @@ export default function Settings() {
                   )}
                 </div>
                 <input className="ss-input-file" type="file"
-                  name="logo_dark" onChange={updateField} accept="image/*" />
+                  name="logo_dark" onChange={updateField} accept=".svg,.png,.jpg,.jpeg,.webp,.gif" />
               </div>
             </div>
           </div>

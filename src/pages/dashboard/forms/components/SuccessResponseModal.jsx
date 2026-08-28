@@ -1,5 +1,6 @@
 // src/pages/dashboard/forms/components/SuccessResponseModal.jsx
 import React, { useEffect, useState } from "react";
+import UploadLimits, { PICTURE_ACCEPT } from "../../../../components/forms/cms/UploadLimits";
 import { useTranslation } from "react-i18next";
 
 const IconX = () => (
@@ -119,7 +120,8 @@ export default function SuccessResponseModal({ initialData, onClose, onSubmit, s
             </div>
             <div className="fb-form-group">
               <label className="fb-label">{t("cms.forms.success_responses.fields.logo")}</label>
-              <input type="file" accept=".png,.jpg,.jpeg,.svg,.webp" onChange={handleLogo} />
+              <input type="file" accept={PICTURE_ACCEPT} onChange={handleLogo} />
+              <UploadLimits kind="logo_full" />
               {preview && (
                 <img src={preview} alt=""
                   style={{ width: "72px", marginTop: "10px", objectFit: "contain", borderRadius: "8px" }} />

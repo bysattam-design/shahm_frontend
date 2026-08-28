@@ -1,5 +1,6 @@
 // Dashboard footer CMS
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import UploadLimits, { PICTURE_ACCEPT } from "../../../components/forms/cms/UploadLimits";
 import api from "../../../api/axiosClient";
 import { API_PATHS } from "../../../api/routes";
 import toast from "react-hot-toast";
@@ -1672,10 +1673,11 @@ export default function FooterCms() {
                     )}
                     <input
                       type="file"
-                      accept="image/*"
+                      accept={PICTURE_ACCEPT}
                       className="cms-footer-input-file"
                       onChange={(e) => setSetting({ logo_ar: e.target.files[0] || null })}
                     />
+                      <UploadLimits kind="logo_full" />
                   </div>
 
                   {/* Logo EN */}
@@ -1690,10 +1692,11 @@ export default function FooterCms() {
                     )}
                     <input
                       type="file"
-                      accept="image/*"
+                      accept={PICTURE_ACCEPT}
                       className="cms-footer-input-file"
                       onChange={(e) => setSetting({ logo_en: e.target.files[0] || null })}
                     />
+                      <UploadLimits kind="logo_full" />
                   </div>
 
                   {/* VAT logo */}
@@ -1708,10 +1711,11 @@ export default function FooterCms() {
                     )}
                     <input
                       type="file"
-                      accept="image/*"
+                      accept={PICTURE_ACCEPT}
                       className="cms-footer-input-file"
                       onChange={(e) => setSetting({ vat_logo: e.target.files[0] || null })}
                     />
+                      <UploadLimits kind="logo_compact" />
                   </div>
                 </div>
               </div>

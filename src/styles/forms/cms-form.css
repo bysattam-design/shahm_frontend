@@ -267,3 +267,12 @@
   .sf-tab,
   .sf-btn { transition: none; }
 }
+
+/* What an upload field will take, said under the control rather than after a
+   refusal. Quiet by design: it is a note, not a warning. */
+.sf-upload-limits {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--sf-muted);
+}

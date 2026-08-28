@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
+import UploadLimits, { PICTURE_ACCEPT } from "../../../components/forms/cms/UploadLimits";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import { useSweetAlert } from "../../../components/common/SweetAlert";
@@ -261,11 +262,12 @@ function GeneralTab({ data, reload }) {
               <SectionDivider label={t("cms.about.general.logoSection")} />
               <Field label={t("cms.about.general.logoLabel")} hint={t("cms.about.general.logoHint")}>
                 <FileUploadZone
-                  accept=".png,.jpg,.jpeg,.webp,.svg"
+                  accept={PICTURE_ACCEPT}
                   preview={logoFile ? URL.createObjectURL(logoFile) : data.logo_url}
                   previewType="image"
                   label={logoFile ? t("cms.about.general.changeFile") : t("cms.about.general.uploadLogo")}
                   onChange={(e) => {
+                  <UploadLimits kind="logo_full" />
                     const f = e.target.files[0];
                     if (f) setLogoFile(f);
                   }}
@@ -279,7 +281,7 @@ function GeneralTab({ data, reload }) {
 
               <Field label="شعار الجوال" hint="يظهر بدل الشعار الأساسي على الشاشات الصغيرة">
                 <FileUploadZone
-                  accept=".png,.jpg,.jpeg,.webp,.svg"
+                  accept={PICTURE_ACCEPT}
                   preview={
                     mobileLogoFile
                       ? URL.createObjectURL(mobileLogoFile)
@@ -288,6 +290,7 @@ function GeneralTab({ data, reload }) {
                   previewType="image"
                   label={mobileLogoFile ? t("cms.about.general.changeFile") : "رفع شعار الجوال"}
                   onChange={(e) => {
+                  <UploadLimits kind="logo_compact" />
                     const f = e.target.files[0];
                     if (f) setMobileLogoFile(f);
                   }}
@@ -742,10 +745,11 @@ function PostsTab({ data, reload }) {
             <div className="ca-form-group">
               <Field label={t("cms.about.posts.imageLabel")}>
                 <FileUploadZone
-                  accept="image/*"
+                  accept={PICTURE_ACCEPT}
                   preview={newPost.image ? URL.createObjectURL(newPost.image) : null}
                   label={newPost.image ? t("cms.about.general.changeFile") : t("cms.about.posts.uploadImage")}
                   onChange={(e) => {
+                  <UploadLimits />
                     const f = e.target.files[0];
                     if (f) setNewPost({ ...newPost, image: f });
                   }}
@@ -840,8 +844,9 @@ function PostsTab({ data, reload }) {
                           <label className="ca-upload-inline-btn">
                             <IconUpload />
                             {imageFiles[p.id] ? imageFiles[p.id].name : t("cms.about.posts.replaceImage")}
-                            <input type="file" accept="image/*" style={{ display: "none" }}
+                            <input type="file" accept={PICTURE_ACCEPT} style={{ display: "none" }}
                               onChange={(e) => {
+                            <UploadLimits kind="icon" />
                                 const f = e.target.files[0];
                                 if (f) setImageFiles((prev) => ({ ...prev, [p.id]: f }));
                               }} />
@@ -907,8 +912,9 @@ function IconRow({ icon, onSave, onDelete, saving }) {
         )}
         <label className="ca-icon-replace-btn">
           <IconUpload />
-          <input type="file" accept=".png,.jpg,.jpeg,.webp,.svg" style={{ display: "none" }}
+          <input type="file" accept={PICTURE_ACCEPT} style={{ display: "none" }}
             onChange={(e) => { const f = e.target.files[0]; if (f) setIconFile(f); }} />
+          <UploadLimits kind="icon" />
         </label>
       </div>
       <div className="ca-icon-fields">
@@ -1261,9 +1267,10 @@ function SectionsTab({ data, reload }) {
                           {newIconForms[sec.id]?.icon
                             ? newIconForms[sec.id].icon.name
                             : t("cms.about.sections.uploadIcon")}
-                          <input type="file" accept=".png,.jpg,.jpeg,.webp,.svg"
+                          <input type="file" accept={PICTURE_ACCEPT}
                             style={{ display: "none" }}
                             onChange={(e) => {
+                          <UploadLimits kind="icon" />
                               const f = e.target.files[0];
                               if (f) setNewIconForms((prev) => ({ ...prev, [sec.id]: { ...prev[sec.id], icon: f } }));
                             }} />
@@ -1471,11 +1478,12 @@ function PartnersTab({ data, reload }) {
             <div className="ca-form-group">
               <Field label={t("cms.about.partners.logoLabel")}>
                 <FileUploadZone
-                  accept=".png,.jpg,.jpeg,.webp,.svg"
+                  accept={PICTURE_ACCEPT}
                   preview={newPartnerFile ? URL.createObjectURL(newPartnerFile) : null}
                   label={newPartnerFile ? newPartnerFile.name : t("cms.about.partners.uploadLogo")}
                   onChange={(e) => { const f = e.target.files[0]; if (f) setNewPartnerFile(f); }}
                 />
+                  <UploadLimits kind="logo_full" />
               </Field>
             </div>
             <div className="ca-form-group">
@@ -1519,9 +1527,10 @@ function PartnersTab({ data, reload }) {
                     )}
                     <label className="ca-partner-replace">
                       <IconUpload />
-                      <input type="file" accept=".png,.jpg,.jpeg,.webp,.svg"
+                      <input type="file" accept={PICTURE_ACCEPT}
                         style={{ display: "none" }}
                         onChange={(e) => {
+                      <UploadLimits kind="logo_full" />
                           const f = e.target.files[0];
                           if (f) setReplaceFiles((prev) => ({ ...prev, [p.id]: f }));
                         }} />

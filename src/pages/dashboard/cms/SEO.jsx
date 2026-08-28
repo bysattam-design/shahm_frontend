@@ -1,5 +1,6 @@
 // Dashboard SEO settings
 import React, { useEffect, useState } from "react";
+import UploadLimits, { PICTURE_ACCEPT } from "../../../components/forms/cms/UploadLimits";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import Swal from "sweetalert2";
@@ -357,8 +358,9 @@ export default function SEO() {
                     type="file"
                     name="og_image"
                     onChange={handleFormChange}
-                    accept="image/*"
+                    accept={PICTURE_ACCEPT}
                   />
+                    <UploadLimits kind="cover" />
                 </div>
 
                 <div className="dashboard-seo-form-group dashboard-seo-full-width">

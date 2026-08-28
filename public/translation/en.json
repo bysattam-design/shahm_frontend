@@ -3055,5 +3055,12 @@
       "admin": "Admin",
       "super_admin": "General manager"
     }
+  },
+  "uploads": {
+    "formats": "SVG, PNG, JPG, WEBP or GIF",
+    "max_svg": "SVG up to {{kb}} KB",
+    "max_raster": "Image up to {{mb}} MB",
+    "recommended": "Recommended {{w}}×{{h}}",
+    "max_pixels": "Up to {{px}} px"
   }
 }

@@ -1,5 +1,6 @@
 // src/pages/dashboard/services/ServicesPageCMS.jsx
 import React, { useEffect, useState, useRef } from "react";
+import UploadLimits, { PICTURE_ACCEPT } from "../../../components/forms/cms/UploadLimits";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import api from "../../../api/axiosClient";
@@ -173,8 +174,9 @@ export default function ServicesPageCMS() {
                   <label className="cms-services-file-label">
                     <IconUpload />
                     <span>{t("cms.services.cms.choose_file")}</span>
-                    <input ref={logoRef} type="file" accept="image/*" className="cms-services-file-input"
+                    <input ref={logoRef} type="file" accept={PICTURE_ACCEPT} className="cms-services-file-input"
                       onChange={(e) => handleFileChange("hero_logo", e)} />
+                    <UploadLimits kind="logo_full" />
                   </label>
                 </div>
               </div>
@@ -192,8 +194,9 @@ export default function ServicesPageCMS() {
                     <label className="cms-services-file-label">
                       <IconUpload />
                       <span>{t("cms.services.cms.choose_file")}</span>
-                      <input ref={imageRef} type="file" accept="image/*" className="cms-services-file-input"
+                      <input ref={imageRef} type="file" accept={PICTURE_ACCEPT} className="cms-services-file-input"
                         onChange={(e) => handleFileChange("hero_image", e)} />
+                      <UploadLimits kind="icon" />
                     </label>
                   </div>
                 </div>
