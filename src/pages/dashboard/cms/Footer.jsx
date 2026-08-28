@@ -1,10 +1,15 @@
 // Dashboard footer CMS
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import api from "../../../api/axiosClient";
 import { API_PATHS } from "../../../api/routes";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { useSweetAlert } from "../../../components/common/SweetAlert";
+import { Button, EmptyState, Spinner as UiSpinner } from "../../../components/ui";
+import { DraftNotice } from "../../../components/forms/cms";
+import useFormDraft from "../../../hooks/useFormDraft";
+import { parseApiError } from "../../../utils/apiErrors";
+import "../../../styles/forms/cms-form.css";
 import "../../../styles/dashboard/cms/footer.css";
 import Deletebtn from "../../../components/common/dashboard/Deletebtn";
 import Editbtn from "../../../components/common/dashboard/Editbtn";
@@ -17,7 +22,147 @@ function normalizeSlug(val) {
   return val.startsWith("/") ? val : `/${val}`;
 }
 
+/**
+ * Says what the server said, instead of one generic failure.
+ *
+ * Every handler on this screen answered a rejected write with
+ * `toast.error("فشل حفظ الرابط")` and dropped the server's own message and the
+ * name of the field it refused. An editor could not tell a duplicate key from
+ * an expired session. The parsed field messages are returned so the caller can
+ * put them on the fields as well.
+ */
+function notifyError(error, fallback) {
+  const parsed = parseApiError(error);
+
+  if (!parsed.canceled) toast.error(parsed.message || fallback);
+
+  return parsed;
+}
+
+/** The server's word about one field, rendered where that field lives. */
+function FieldError({ message }) {
+  if (!message) return null;
+
+  return (
+    <span className="sf-field__error" role="alert">
+      {message}
+    </span>
+  );
+}
+
+/** The server's word about the whole form, above its buttons. */
+function FormError({ message }) {
+  if (!message) return null;
+
+  return (
+    <div className="cms-footer-info-box cms-footer-info-box--warning" role="alert">
+      <IconInfo />
+      {message}
+    </div>
+  );
+}
+
+/**
+ * A number the editor finishes before it is sent.
+ *
+ * The order boxes wrote on every keystroke and then reloaded the whole screen,
+ * so typing `12` sent `1`, threw the tree away, and put the box back at its old
+ * value with the caret gone. An editor could not set a two-digit order at all.
+ * This one keeps what is being typed and sends it once — on blur, or on Enter —
+ * and Escape puts back what was there.
+ */
+function OrderBox({ value, label, onCommit, disabled = false }) {
+  const settled = useRef(String(value ?? ""));
+  const [draft, setDraft] = useState(settled.current);
+
+  // A value that moved on the server replaces the box, but never while the
+  // editor is part-way through typing their own.
+  useEffect(() => {
+    const next = String(value ?? "");
+
+    if (next !== settled.current) {
+      settled.current = next;
+      setDraft(next);
+    }
+  }, [value]);
+
+  const commit = () => {
+    if (draft === settled.current) return;
+    settled.current = draft;
+    onCommit(draft);
+  };
+
+  return (
+    <input
+      type="number"
+      className="cms-footer-input-number"
+      value={draft}
+      aria-label={label}
+      disabled={disabled}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          commit();
+          event.currentTarget.blur();
+        }
+        if (event.key === "Escape") {
+          setDraft(settled.current);
+          event.currentTarget.blur();
+        }
+      }}
+    />
+  );
+}
+
 const SYSTEM_COLUMN_KEYS = ["newsletter", "social", "sitemap"];
+
+/* ── The shape each form starts from, and returns to after a save ── */
+const EMPTY_COLUMN = { key: "", title_ar: "", title_en: "", order: 0, is_active: true };
+const EMPTY_LINK = {
+  label_ar: "", label_en: "", url: "", page: "", parent: "", order: 0, is_active: true,
+};
+const EMPTY_SETTINGS = {
+  newsletter_title_ar: "", newsletter_title_en: "",
+  copyright_ar: "", copyright_en: "",
+  logo_ar: null, logo_en: null, vat_logo: null,
+};
+const EMPTY_CTA = {
+  title_ar: "", title_en: "", description_ar: "", description_en: "",
+  url: "", page: "", order: 0, is_active: true,
+};
+
+/** A copy of `source` without the named keys. */
+function without(source, keys) {
+  if (!keys.some((key) => key in source)) return source;
+
+  const next = { ...source };
+  keys.forEach((key) => delete next[key]);
+  return next;
+}
+
+/**
+ * Puts the caret on the first field the server refused, so the editor is
+ * looking at the thing they have to change rather than hunting for it.
+ */
+function focusRejected(fields) {
+  const first = Object.keys(fields || {})[0];
+  if (!first || typeof document === "undefined") return;
+
+  const element = document.querySelector(`[data-field="${first}"]`);
+  if (element && typeof element.focus === "function") element.focus();
+}
+
+/** Whether anything has been typed into a form that started empty. */
+function isFilled(values, blank) {
+  return Object.keys(blank).some((key) => {
+    const now = values[key];
+    const was = blank[key];
+    if (typeof was === "boolean") return now !== was;
+    return String(now ?? "") !== String(was ?? "");
+  });
+}
 
 /* ══════════════════════════════════════════════════════
    ICONS — minimal SVG set
@@ -84,6 +229,86 @@ const Spinner = () => (
   </span>
 );
 
+/**
+ * One link in the tree, and its children under it.
+ *
+ * This lived inside the screen. A component declared inside another component
+ * is a new type on every render, so React did not update the tree — it threw
+ * the whole thing away and built a fresh one. Anything focused inside it was
+ * destroyed along with it, which is why the caret vanished from the order box
+ * after a single character. Out here it keeps its identity between renders.
+ */
+function TreeItem({ item, isAr, t, loading, onToggle, onDelete, onOrderCommit }) {
+  const isDeleting = loading[`link-delete-${item.id}`];
+
+  return (
+    <li className="cms-footer-link-item">
+      <div className="cms-footer-link-content">
+        {/* Icon */}
+        <span className="cms-footer-link-icon">
+          <IconLink />
+        </span>
+
+        {/* Label */}
+        <span className={`cms-footer-link-label${!item.is_active ? " cms-footer-link-label--inactive" : ""}`}>
+          {isAr ? item.label_ar : item.label_en}
+        </span>
+
+        {/* Inactive badge */}
+        {!item.is_active && (
+          <span className="cms-footer-badge cms-footer-badge--inactive">
+            {t("cms.footer.link_disabled")}
+          </span>
+        )}
+
+        {/* URL preview */}
+        {(item.url || item.resolved_url) && (
+          <span className="cms-footer-link-url">
+            {item.resolved_url || item.url}
+          </span>
+        )}
+
+        {/* Order — committed when the editor is done with it, not per keystroke */}
+        <OrderBox
+          value={item.order}
+          label={`${t("cms.footer.order")} — ${isAr ? item.label_ar : item.label_en}`}
+          onCommit={(next) => onOrderCommit(item, next)}
+        />
+
+        {/* Toggle active */}
+        <button
+          type="button"
+          className="cms-footer-btn-edit cms-footer-btn-edit--sm"
+          onClick={() => onToggle(item)}
+        >
+          {item.is_active ? t("cms.footer.disable") : t("cms.footer.enable")}
+        </button>
+
+        {/* Delete */}
+        <Deletebtn onConfirm={() => onDelete(item.id)} disabled={isDeleting} />
+      </div>
+
+      {/* Children */}
+      {item.children?.length > 0 && (
+        <ul className="cms-footer-links-list cms-footer-links-nested">
+          {item.children.map((child) => (
+            <TreeItem
+              key={child.id}
+              item={child}
+              isAr={isAr}
+              t={t}
+              loading={loading}
+              onToggle={onToggle}
+              onDelete={onDelete}
+              onOrderCommit={onOrderCommit}
+            />
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
+
 /* ══════════════════════════════════════════════════════
    MAIN COMPONENT
 ══════════════════════════════════════════════════════ */
@@ -101,48 +326,121 @@ export default function FooterCms() {
   const [activeSection, setActiveSection] = useState("columns");
   const [loading, setLoading] = useState({});
 
+  /* ── What the first load did: loading | ready | failed ── */
+  const [pageState, setPageState] = useState({ status: "loading", message: "" });
+
+  /* ── What the server refused, per form ── */
+  const [colErrors, setColErrors] = useState({});
+  const [colFormError, setColFormError] = useState("");
+  const [ctaErrors, setCtaErrors] = useState({});
+  const [ctaFormError, setCtaFormError] = useState("");
+  const [settingsErrors, setSettingsErrors] = useState({});
+  const [settingsFormError, setSettingsFormError] = useState("");
+  const [linkErrors, setLinkErrors] = useState({});
+
   /* ── Column form ── */
-  const [colForm, setColForm] = useState({
-    key: "",
-    title_ar: "",
-    title_en: "",
-    order: 0,
-    is_active: true
-  });
+  const [colForm, setColForm] = useState(EMPTY_COLUMN);
   const [editColumnId, setEditColumnId] = useState(null);
+
+  // Editing a field clears what the server said about that field, so a
+  // corrected value stops carrying the old complaint.
+  const setCol = (patch) => {
+    setColForm((current) => ({ ...current, ...patch }));
+    setColErrors((current) => without(current, Object.keys(patch)));
+  };
 
   /* ── Per-column link forms ── */
   const [linkForms, setLinkForms] = useState({});
-  const getLinkForm = (colId) =>
-    linkForms[colId] || { label_ar: "", label_en: "", url: "", page: "", parent: "", order: 0, is_active: true };
-  const setLinkForm = (colId, val) =>
-    setLinkForms((prev) => ({ ...prev, [colId]: val }));
-  const resetLinkForm = (colId) =>
-    setLinkForms((prev) => ({
-      ...prev,
-      [colId]: { label_ar: "", label_en: "", url: "", page: "", parent: "", order: 0, is_active: true },
-    }));
+  const getLinkForm = (colId) => linkForms[colId] || EMPTY_LINK;
+  const setLink = (colId, patch) => {
+    setLinkForms((prev) => ({ ...prev, [colId]: { ...(prev[colId] || EMPTY_LINK), ...patch } }));
+    setLinkErrors((prev) => {
+      const entry = prev[colId];
+      if (!entry) return prev;
+      return { ...prev, [colId]: { ...entry, fields: without(entry.fields, Object.keys(patch)) } };
+    });
+  };
+  const resetLinkForm = (colId) => {
+    setLinkForms((prev) => ({ ...prev, [colId]: EMPTY_LINK }));
+    setLinkErrors((prev) => ({ ...prev, [colId]: { fields: {}, message: "" } }));
+  };
+  const getLinkErrors = (colId) => linkErrors[colId] || { fields: {}, message: "" };
 
   /* ── Settings form ── */
-  const [settingsForm, setSettingsForm] = useState({
-    newsletter_title_ar: "", newsletter_title_en: "",
-    copyright_ar: "", copyright_en: "",
-    logo_ar: null, logo_en: null, vat_logo: null,
-  });
+  const [settingsForm, setSettingsForm] = useState(EMPTY_SETTINGS);
+  const setSetting = (patch) => {
+    setSettingsForm((current) => ({ ...current, ...patch }));
+    setSettingsErrors((current) => without(current, Object.keys(patch)));
+  };
 
   /* ── CTA form ── */
-  const [ctaForm, setCtaForm] = useState({
-    title_ar: "", title_en: "", description_ar: "", description_en: "",
-    url: "", page: "", order: 0, is_active: true,
-  });
+  const [ctaForm, setCtaForm] = useState(EMPTY_CTA);
   const [editCtaId, setEditCtaId] = useState(null);
+  const setCta = (patch) => {
+    setCtaForm((current) => ({ ...current, ...patch }));
+    setCtaErrors((current) => without(current, Object.keys(patch)));
+  };
 
   /* ── Loading helper ── */
   const setLoadingKey = (key, val) =>
     setLoading((prev) => ({ ...prev, [key]: val }));
 
+  /* ══ Pending edits, and the drafts that outlive a closed tab ══
+     Nothing on this screen survived a reload: an editor half-way through a
+     column, a set of links or the copyright line lost all of it to a stray
+     refresh, and the screen never said an edit was pending. */
+  const columnDirty = useMemo(() => isFilled(colForm, EMPTY_COLUMN), [colForm]);
+  const ctaDirty = useMemo(() => isFilled(ctaForm, EMPTY_CTA), [ctaForm]);
+  const linksDirty = useMemo(
+    () => Object.values(linkForms).some((form) => isFilled(form, EMPTY_LINK)),
+    [linkForms]
+  );
+  const settingsDirty = useMemo(() => {
+    if (!footerSettings) return false;
+    return ["newsletter_title_ar", "newsletter_title_en", "copyright_ar", "copyright_en"]
+      .some((key) => (settingsForm[key] || "") !== (footerSettings[key] || ""));
+  }, [settingsForm, footerSettings]);
+
+  const columnDraft = useFormDraft({
+    key: editColumnId ? `footer:column:${editColumnId}` : "footer:column:new",
+    values: colForm,
+    dirty: columnDirty,
+  });
+  const ctaDraft = useFormDraft({
+    key: editCtaId ? `footer:cta:${editCtaId}` : "footer:cta:new",
+    values: ctaForm,
+    dirty: ctaDirty,
+  });
+  const linksDraft = useFormDraft({ key: "footer:links", values: linkForms, dirty: linksDirty });
+  // The three files are not carried in a draft — a browser will not hand a
+  // chosen file back after a reload — so only the four texts are stored.
+  const settingsDraft = useFormDraft({
+    key: "footer:settings",
+    values: {
+      newsletter_title_ar: settingsForm.newsletter_title_ar,
+      newsletter_title_en: settingsForm.newsletter_title_en,
+      copyright_ar: settingsForm.copyright_ar,
+      copyright_en: settingsForm.copyright_en,
+    },
+    dirty: settingsDirty,
+  });
+
+  /** «تعديل غير محفوظ» said in words, where the buttons are. */
+  const PendingNote = ({ dirty }) =>
+    dirty ? (
+      <span className="sf-savebar__dirty">
+        {t("form_layer.unsaved", "تعديل غير محفوظ")}
+      </span>
+    ) : null;
+
   /* ══ Load Data ══ */
-  const loadData = useCallback(async () => {
+  /**
+   * `quiet` is for the refresh that follows a write: the screen already has
+   * its content and should not blink back to a loading state to fetch it again.
+   */
+  const loadData = useCallback(async ({ quiet = false } = {}) => {
+    if (!quiet) setPageState({ status: "loading", message: "" });
+
     try {
       const [colRes, pagesRes] = await Promise.all([
         api.get(API_PATHS.cms.columns),
@@ -151,8 +449,17 @@ export default function FooterCms() {
       setColumns(colRes.data);
       setPages(pagesRes.data);
     } catch (err) {
-      console.error("Failed to load columns/pages:", err);
+      const parsed = parseApiError(err);
+      if (parsed.canceled) return;
+
+      // The screen used to swallow this and render as though the footer simply
+      // had no columns, so an outage looked exactly like a wiped footer.
+      setPageState({ status: "failed", message: parsed.message });
+      return;
     }
+
+    // The three below are decoration for the columns tab; the screen still
+    // works without them, so a failure here does not blank the page.
     try {
       const genRes = await api.get(API_PATHS.public.settings);
       setGeneralSettings(genRes.data);
@@ -172,6 +479,8 @@ export default function FooterCms() {
       const ctaRes = await api.get(API_PATHS.cms.footerCtas);
       setCtaButtons(ctaRes.data);
     } catch { /* optional */ }
+
+    setPageState({ status: "ready", message: "" });
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
@@ -181,7 +490,8 @@ export default function FooterCms() {
     e.preventDefault();
     const key = editColumnId ? `col-update-${editColumnId}` : "col-create";
     setLoadingKey(key, true);
-    await new Promise((r) => setTimeout(r, 800)); // subtle loading feedback
+    setColErrors({});
+    setColFormError("");
     try {
       if (editColumnId) {
         await api.patch(API_PATHS.cms.column(editColumnId), colForm);
@@ -190,24 +500,23 @@ export default function FooterCms() {
         await api.post(API_PATHS.cms.columns, colForm);
         toast.success(t("cms.footer.column_created"));
       }
+      columnDraft.clear();
       resetColumnForm();
-      loadData();
-    } catch {
-      toast.error(t("cms.footer.column_save_failed"));
+      loadData({ quiet: true });
+    } catch (err) {
+      const parsed = notifyError(err, t("cms.footer.column_save_failed"));
+      setColErrors(parsed.fields);
+      setColFormError(parsed.message);
+      focusRejected(parsed.fields);
     } finally {
       setLoadingKey(key, false);
     }
   };
 
   const resetColumnForm = () => {
-    setColForm({
-      key: "",
-      title_ar: "",
-      title_en: "",
-      order: 0,
-      is_active: true
-    });
-
+    setColForm(EMPTY_COLUMN);
+    setColErrors({});
+    setColFormError("");
     setEditColumnId(null);
   };
 
@@ -223,13 +532,12 @@ export default function FooterCms() {
     });
     if (!confirmed) return;
     setLoadingKey(`col-delete-${id}`, true);
-    await new Promise((r) => setTimeout(r, 800));
     try {
       await api.delete(API_PATHS.cms.column(id));
       toast.success(t("cms.footer.column_deleted"));
-      loadData();
-    } catch {
-      toast.error(t("cms.footer.column_save_failed"));
+      loadData({ quiet: true });
+    } catch (err) {
+      notifyError(err, t("cms.footer.column_save_failed"));
     } finally {
       setLoadingKey(`col-delete-${id}`, false);
     }
@@ -263,17 +571,21 @@ export default function FooterCms() {
 
     const key = `link-create-${colId}`;
     setLoadingKey(key, true);
-    await new Promise((r) => setTimeout(r, 800));
+    setLinkErrors((prev) => ({ ...prev, [colId]: { fields: {}, message: "" } }));
     try {
       await api.post(API_PATHS.cms.footerLinks, fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       toast.success(t("cms.footer.link_created"));
       resetLinkForm(colId);
-      loadData();
+      loadData({ quiet: true });
     } catch (err) {
-      console.error(err);
-      toast.error(t("cms.footer.link_save_failed"));
+      const parsed = notifyError(err, t("cms.footer.link_save_failed"));
+      setLinkErrors((prev) => ({
+        ...prev,
+        [colId]: { fields: parsed.fields, message: parsed.message },
+      }));
+      focusRejected(parsed.fields);
     } finally {
       setLoadingKey(key, false);
     }
@@ -291,13 +603,12 @@ export default function FooterCms() {
     });
     if (!confirmed) return;
     setLoadingKey(`link-delete-${id}`, true);
-    await new Promise((r) => setTimeout(r, 800));
     try {
       await api.delete(API_PATHS.cms.footerLink(id));
       toast.success(t("cms.footer.link_deleted"));
-      loadData();
-    } catch {
-      toast.error(t("cms.footer.link_save_failed"));
+      loadData({ quiet: true });
+    } catch (err) {
+      notifyError(err, t("cms.footer.link_save_failed"));
     } finally {
       setLoadingKey(`link-delete-${id}`, false);
     }
@@ -307,9 +618,29 @@ export default function FooterCms() {
     try {
       await api.patch(API_PATHS.cms.footerLink(link.id), { is_active: !link.is_active });
       toast.success(t("cms.footer.order_updated"));
-      loadData();
-    } catch {
-      toast.error(t("cms.footer.link_save_failed"));
+      loadData({ quiet: true });
+    } catch (err) {
+      notifyError(err, t("cms.footer.link_save_failed"));
+    }
+  };
+
+  const handleLinkOrderCommit = async (link, order) => {
+    try {
+      await api.patch(API_PATHS.cms.footerLink(link.id), { order });
+      toast.success(t("cms.footer.order_updated"));
+      loadData({ quiet: true });
+    } catch (err) {
+      notifyError(err, t("cms.footer.link_save_failed"));
+    }
+  };
+
+  const handleColumnOrderCommit = async (col, order) => {
+    try {
+      await api.patch(API_PATHS.cms.column(col.id), { order });
+      toast.success(t("cms.footer.order_updated"));
+      loadData({ quiet: true });
+    } catch (err) {
+      notifyError(err, t("cms.footer.column_save_failed"));
     }
   };
 
@@ -326,15 +657,20 @@ export default function FooterCms() {
     if (settingsForm.vat_logo) fd.append("vat_logo", settingsForm.vat_logo);
 
     setLoadingKey("settings-save", true);
-    await new Promise((r) => setTimeout(r, 800));
+    setSettingsErrors({});
+    setSettingsFormError("");
     try {
       await api.post(API_PATHS.cms.footerSettings, fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       toast.success(t("cms.footer.settings_saved"));
-      loadData();
-    } catch {
-      toast.error(t("cms.footer.column_save_failed"));
+      settingsDraft.clear();
+      loadData({ quiet: true });
+    } catch (err) {
+      const parsed = notifyError(err, t("cms.footer.column_save_failed"));
+      setSettingsErrors(parsed.fields);
+      setSettingsFormError(parsed.message);
+      focusRejected(parsed.fields);
     } finally {
       setLoadingKey("settings-save", false);
     }
@@ -363,7 +699,8 @@ export default function FooterCms() {
 
     const key = editCtaId ? `cta-update-${editCtaId}` : "cta-create";
     setLoadingKey(key, true);
-    await new Promise((r) => setTimeout(r, 800));
+    setCtaErrors({});
+    setCtaFormError("");
     try {
       if (editCtaId) {
         await api.patch(API_PATHS.cms.footerCta(editCtaId), payload);
@@ -372,17 +709,23 @@ export default function FooterCms() {
         await api.post(API_PATHS.cms.footerCtas, payload);
         toast.success(t("cms.footer.column_created"));
       }
+      ctaDraft.clear();
       resetCtaForm();
-      loadData();
-    } catch {
-      toast.error(t("cms.footer.column_save_failed"));
+      loadData({ quiet: true });
+    } catch (err) {
+      const parsed = notifyError(err, t("cms.footer.column_save_failed"));
+      setCtaErrors(parsed.fields);
+      setCtaFormError(parsed.message);
+      focusRejected(parsed.fields);
     } finally {
       setLoadingKey(key, false);
     }
   };
 
   const resetCtaForm = () => {
-    setCtaForm({ title_ar: "", title_en: "", description_ar: "", description_en: "", url: "", page: "", order: 0, is_active: true });
+    setCtaForm(EMPTY_CTA);
+    setCtaErrors({});
+    setCtaFormError("");
     setEditCtaId(null);
   };
 
@@ -398,91 +741,16 @@ export default function FooterCms() {
     });
     if (!confirmed) return;
     setLoadingKey(`cta-delete-${id}`, true);
-    await new Promise((r) => setTimeout(r, 800));
     try {
       await api.delete(API_PATHS.cms.footerCta(id));
       toast.success(t("cms.footer.link_deleted"));
-      loadData();
-    } catch {
-      toast.error(t("cms.footer.link_save_failed"));
+      loadData({ quiet: true });
+    } catch (err) {
+      notifyError(err, t("cms.footer.link_save_failed"));
     } finally {
       setLoadingKey(`cta-delete-${id}`, false);
     }
   };
-
-  /* ══ Tree Item ══ */
-  function TreeItem({ item }) {
-    const isDeleting = loading[`link-delete-${item.id}`];
-    return (
-      <li className="cms-footer-link-item">
-        <div className="cms-footer-link-content">
-          {/* Icon */}
-          <span className="cms-footer-link-icon">
-            <IconLink />
-          </span>
-
-          {/* Label */}
-          <span className={`cms-footer-link-label${!item.is_active ? " cms-footer-link-label--inactive" : ""}`}>
-            {isAr ? item.label_ar : item.label_en}
-          </span>
-
-          {/* Inactive badge */}
-          {!item.is_active && (
-            <span className="cms-footer-badge cms-footer-badge--inactive">
-              {t("cms.footer.link_disabled")}
-            </span>
-          )}
-
-          {/* URL preview */}
-          {(item.url || item.resolved_url) && (
-            <span className="cms-footer-link-url">
-              {item.resolved_url || item.url}
-            </span>
-          )}
-
-          {/* Order input */}
-          <input
-            type="number"
-            className="cms-footer-input-number"
-            value={item.order}
-            aria-label={t("cms.footer.order")}
-            onChange={async (e) => {
-              try {
-                await api.patch(API_PATHS.cms.footerLink(item.id), { order: e.target.value });
-                toast.success(t("cms.footer.order_updated"));
-                loadData();
-              } catch {
-                toast.error(t("cms.footer.link_save_failed"));
-              }
-            }}
-          />
-
-          {/* Toggle active */}
-          <button
-            className="cms-footer-btn-edit cms-footer-btn-edit--sm"
-            onClick={() => handleToggleLinkActive(item)}
-          >
-            {item.is_active ? t("cms.footer.disable") : t("cms.footer.enable")}
-          </button>
-
-          {/* Delete */}
-          <Deletebtn
-            onConfirm={() => handleDeleteLink(item.id)}
-            disabled={isDeleting}
-          />
-        </div>
-
-        {/* Children */}
-        {item.children?.length > 0 && (
-          <ul className="cms-footer-links-list cms-footer-links-nested">
-            {item.children.map((c) => (
-              <TreeItem key={c.id} item={c} />
-            ))}
-          </ul>
-        )}
-      </li>
-    );
-  }
 
   /* ══ Column content by key ══ */
   const renderColumnContent = (col) => {
@@ -528,7 +796,16 @@ export default function FooterCms() {
     return (
       <ul className="cms-footer-links-list">
         {col.links?.map((l) => (
-          <TreeItem key={l.id} item={l} />
+          <TreeItem
+            key={l.id}
+            item={l}
+            isAr={isAr}
+            t={t}
+            loading={loading}
+            onToggle={handleToggleLinkActive}
+            onDelete={handleDeleteLink}
+            onOrderCommit={handleLinkOrderCommit}
+          />
         ))}
         {(!col.links || col.links.length === 0) && (
           <li className="cms-footer-links-empty">
@@ -544,6 +821,7 @@ export default function FooterCms() {
   const renderAddLinkForm = (col) => {
     if (col.key === "social") return null;
     const form = getLinkForm(col.id);
+    const errors = getLinkErrors(col.id);
     const rootLinks = col.links?.filter((l) => !l.parent) || [];
     const isSaving = loading[`link-create-${col.id}`];
     const isDisabled = !form.label_ar.trim() || !form.label_en.trim();
@@ -560,64 +838,60 @@ export default function FooterCms() {
             {/* Row 1: AR + EN labels */}
             <div className="cms-footer-form-row">
               <div className="cms-footer-form-group">
-                <label className="cms-footer-label">{t("cms.footer.link_label_ar")}</label>
+                <label className="cms-footer-label" htmlFor={`link-ar-${col.id}`}>
+                  {t("cms.footer.link_label_ar")}
+                </label>
                 <input
+                  id={`link-ar-${col.id}`}
+                  data-field="label_ar"
                   className="cms-footer-input"
                   required
                   placeholder={t("cms.footer.link_label_ar_placeholder")}
                   value={form.label_ar}
-                  onChange={(e) => setLinkForm(col.id, { ...form, label_ar: e.target.value })}
+                  onChange={(e) => setLink(col.id, { label_ar: e.target.value })}
                   dir="rtl"
                 />
+                <FieldError message={errors.fields.label_ar} />
               </div>
               <div className="cms-footer-form-group">
-                <label className="cms-footer-label">{t("cms.footer.link_label_en")}</label>
+                <label className="cms-footer-label" htmlFor={`link-en-${col.id}`}>
+                  {t("cms.footer.link_label_en")}
+                </label>
                 <input
+                  id={`link-en-${col.id}`}
+                  data-field="label_en"
                   className="cms-footer-input"
                   required
                   placeholder={t("cms.footer.link_label_en_placeholder")}
                   value={form.label_en}
-                  onChange={(e) => setLinkForm(col.id, { ...form, label_en: e.target.value })}
+                  onChange={(e) => setLink(col.id, { label_en: e.target.value })}
                 />
+                <FieldError message={errors.fields.label_en} />
               </div>
             </div>
 
             {/* Row 2: URL + Page */}
             <div className="cms-footer-form-row">
               <div className="cms-footer-form-group">
-                <div className="cms-footer-form-row">
-                  <div className="cms-footer-form-group">
-                    <label className="cms-footer-label">
-                      {t("cms.footer.key_label", "المفتاح")}
-                    </label>
-
-                    <input
-                      className="cms-footer-input"
-                      required
-                      placeholder="company_links"
-                      value={colForm.key}
-                      onChange={(e) =>
-                        setColForm({
-                          ...colForm,
-                          key: e.target.value
-                            .toLowerCase()
-                            .replace(/\s+/g, "_")
-                        })
-                      }
-                    />
-                  </div>
-                </div>
-                <label className="cms-footer-label">
+                {/* The column's own «المفتاح» box used to stand here, bound to the
+                    add-column form's state and marked required. A link could not
+                    be saved until it was filled, and filling it quietly rewrote
+                    the key of the column form up the page. It belongs to that
+                    form alone, and it is there. */}
+                <label className="cms-footer-label" htmlFor={`link-url-${col.id}`}>
                   {t("cms.footer.url")}
                   <span className="cms-footer-label-hint">{t("cms.footer.url_hint")}</span>
                 </label>
                 <input
+                  id={`link-url-${col.id}`}
+                  data-field="url"
                   className="cms-footer-input"
                   placeholder="/about-us"
                   value={form.url}
                   disabled={!!form.page}
-                  onChange={(e) => setLinkForm(col.id, { ...form, url: e.target.value, page: "" })}
+                  onChange={(e) => setLink(col.id, { url: e.target.value, page: "" })}
                 />
+                <FieldError message={errors.fields.url} />
               </div>
               <div className="cms-footer-form-group">
                 {/* <label className="cms-footer-label">{t("cms.footer.select_page")}</label>
@@ -640,11 +914,15 @@ export default function FooterCms() {
             {/* Row 3: Parent + Order */}
             <div className="cms-footer-form-row">
               <div className="cms-footer-form-group">
-                <label className="cms-footer-label">{t("cms.footer.parent_link")}</label>
+                <label className="cms-footer-label" htmlFor={`link-parent-${col.id}`}>
+                  {t("cms.footer.parent_link")}
+                </label>
                 <select
+                  id={`link-parent-${col.id}`}
+                  data-field="parent"
                   className="cms-footer-select"
                   value={form.parent}
-                  onChange={(e) => setLinkForm(col.id, { ...form, parent: e.target.value })}
+                  onChange={(e) => setLink(col.id, { parent: e.target.value })}
                 >
                   <option value="">{t("cms.footer.no_parent")}</option>
                   {rootLinks.map((l) => (
@@ -653,16 +931,22 @@ export default function FooterCms() {
                     </option>
                   ))}
                 </select>
+                <FieldError message={errors.fields.parent} />
               </div>
               <div className="cms-footer-form-group">
-                <label className="cms-footer-label">{t("cms.footer.order")}</label>
+                <label className="cms-footer-label" htmlFor={`link-order-${col.id}`}>
+                  {t("cms.footer.order")}
+                </label>
                 <input
+                  id={`link-order-${col.id}`}
+                  data-field="order"
                   className="cms-footer-input"
                   type="number"
                   placeholder="0"
                   value={form.order}
-                  onChange={(e) => setLinkForm(col.id, { ...form, order: e.target.value })}
+                  onChange={(e) => setLink(col.id, { order: e.target.value })}
                 />
+                <FieldError message={errors.fields.order} />
               </div>
             </div>
 
@@ -674,7 +958,7 @@ export default function FooterCms() {
                     type="checkbox"
                     className="cms-footer-checkbox"
                     checked={form.is_active}
-                    onChange={(e) => setLinkForm(col.id, { ...form, is_active: e.target.checked })}
+                    onChange={(e) => setLink(col.id, { is_active: e.target.checked })}
                   />
                   <span className="cms-footer-checkbox-text">{t("cms.footer.active")}</span>
                 </label>
@@ -684,7 +968,10 @@ export default function FooterCms() {
             </div>
           </div>
 
+          <FormError message={errors.message} />
+
           <div className="cms-footer-form-actions">
+            <PendingNote dirty={isFilled(form, EMPTY_LINK)} />
             <button
               type="submit"
               className="cms-footer-btn-primary"
@@ -724,6 +1011,52 @@ export default function FooterCms() {
   /* ══════════════════════════════════════════════════════
      RENDER
   ══════════════════════════════════════════════════════ */
+
+  // While the first load runs, and if it fails. The screen used to render its
+  // forms over an empty `columns`, so an outage was indistinguishable from a
+  // footer with nothing in it.
+  if (pageState.status === "loading") {
+    return (
+      <div className="cms-footer-root">
+        <div className="cms-footer-header">
+          <div className="cms-footer-header-content">
+            <h1 className="cms-footer-title">{t("cms.footer.title")}</h1>
+            <p className="cms-footer-subtitle">{t("cms.footer.subtitle")}</p>
+          </div>
+        </div>
+        <div className="cms-footer-card" data-state="loading">
+          <UiSpinner size={20} label={t("states.loading", "جار التحميل")} />
+        </div>
+      </div>
+    );
+  }
+
+  if (pageState.status === "failed") {
+    return (
+      <div className="cms-footer-root">
+        {sweetAlertEl}
+        <div className="cms-footer-header">
+          <div className="cms-footer-header-content">
+            <h1 className="cms-footer-title">{t("cms.footer.title")}</h1>
+            <p className="cms-footer-subtitle">{t("cms.footer.subtitle")}</p>
+          </div>
+        </div>
+        <div className="cms-footer-card" data-state="failed">
+          <EmptyState
+            title={t("states.error_title", "تعذر جلب البيانات")}
+            hint={pageState.message || t("states.error_hint", "تحقق من الاتصال ثم أعد المحاولة.")}
+            action={
+              <Button onClick={() => loadData()}>
+                {t("states.retry", "أعد المحاولة")}
+              </Button>
+            }
+          />
+        <FieldError message={ctaErrors.url} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="cms-footer-root">
       {/* SweetAlert portal */}
@@ -772,67 +1105,89 @@ export default function FooterCms() {
               )}
             </div>
 
+            <DraftNotice
+              draft={columnDraft.draft}
+              onRestore={() => {
+                const stored = columnDraft.restore();
+                if (stored) setColForm({ ...EMPTY_COLUMN, ...stored });
+              }}
+              onDiscard={columnDraft.discard}
+            />
+
             <form onSubmit={submitColumn}>
               <div className="cms-footer-form-section">
                 {/* Column Key */}
                 <div className="cms-footer-form-row">
                   <div className="cms-footer-form-group">
-                    <label className="cms-footer-label">
+                    <label className="cms-footer-label" htmlFor="column-key">
                       {t("cms.footer.key_label", "المفتاح")}
                     </label>
 
                     <input
+                      id="column-key"
+                      data-field="key"
                       className="cms-footer-input"
                       required
                       placeholder="company_links"
                       value={colForm.key}
                       onChange={(e) =>
-                        setColForm({
-                          ...colForm,
-                          key: e.target.value
-                            .toLowerCase()
-                            .replace(/\s+/g, "_")
-                        })
+                        setCol({ key: e.target.value.toLowerCase().replace(/\s+/g, "_") })
                       }
                     />
+                    <FieldError message={colErrors.key} />
                   </div>
                 </div>
                 {/* Row 1: AR + EN titles */}
                 <div className="cms-footer-form-row">
                   <div className="cms-footer-form-group">
-                    <label className="cms-footer-label">{t("cms.footer.title_ar")}</label>
+                    <label className="cms-footer-label" htmlFor="column-title-ar">
+                      {t("cms.footer.title_ar")}
+                    </label>
                     <input
+                      id="column-title-ar"
+                      data-field="title_ar"
                       className="cms-footer-input"
                       required
                       placeholder={t("cms.footer.title_ar_placeholder")}
                       value={colForm.title_ar}
-                      onChange={(e) => setColForm({ ...colForm, title_ar: e.target.value })}
+                      onChange={(e) => setCol({ title_ar: e.target.value })}
                       dir="rtl"
                     />
+                    <FieldError message={colErrors.title_ar} />
                   </div>
                   <div className="cms-footer-form-group">
-                    <label className="cms-footer-label">{t("cms.footer.title_en")}</label>
+                    <label className="cms-footer-label" htmlFor="column-title-en">
+                      {t("cms.footer.title_en")}
+                    </label>
                     <input
+                      id="column-title-en"
+                      data-field="title_en"
                       className="cms-footer-input"
                       required
                       placeholder={t("cms.footer.title_en_placeholder")}
                       value={colForm.title_en}
-                      onChange={(e) => setColForm({ ...colForm, title_en: e.target.value })}
+                      onChange={(e) => setCol({ title_en: e.target.value })}
                     />
+                    <FieldError message={colErrors.title_en} />
                   </div>
                 </div>
 
                 {/* Row 2: Order + Checkbox */}
                 <div className="cms-footer-form-row">
                   <div className="cms-footer-form-group">
-                    <label className="cms-footer-label">{t("cms.footer.order")}</label>
+                    <label className="cms-footer-label" htmlFor="column-order">
+                      {t("cms.footer.order")}
+                    </label>
                     <input
+                      id="column-order"
+                      data-field="order"
                       className="cms-footer-input"
                       type="number"
                       placeholder="0"
                       value={colForm.order}
-                      onChange={(e) => setColForm({ ...colForm, order: e.target.value })}
+                      onChange={(e) => setCol({ order: e.target.value })}
                     />
+                    <FieldError message={colErrors.order} />
                   </div>
                   <div className="cms-footer-form-group cms-footer-form-group--checkbox">
                     <label className="cms-footer-checkbox-label">
@@ -840,7 +1195,7 @@ export default function FooterCms() {
                         type="checkbox"
                         className="cms-footer-checkbox"
                         checked={colForm.is_active}
-                        onChange={(e) => setColForm({ ...colForm, is_active: e.target.checked })}
+                        onChange={(e) => setCol({ is_active: e.target.checked })}
                       />
                       <span className="cms-footer-checkbox-text">{t("cms.footer.active")}</span>
                     </label>
@@ -848,7 +1203,10 @@ export default function FooterCms() {
                 </div>
               </div>
 
+              <FormError message={colFormError} />
+
               <div className="cms-footer-form-actions">
+                <PendingNote dirty={columnDirty} />
                 <button
                   type="submit"
                   className="cms-footer-btn-primary"
@@ -866,6 +1224,27 @@ export default function FooterCms() {
               </div>
             </form>
           </div>
+
+          {/* An edit to the link forms that was interrupted before it was sent */}
+          <DraftNotice
+            draft={linksDraft.draft}
+            onRestore={() => {
+              const stored = linksDraft.restore();
+              if (stored) setLinkForms(stored);
+            }}
+            onDiscard={linksDraft.discard}
+          />
+
+          {/* Nothing here yet, said rather than shown as a blank page */}
+          {columns.length === 0 && (
+            <div className="cms-footer-card">
+              <EmptyState
+                title={t("states.empty", "لا توجد بيانات")}
+                hint={t("states.empty_hint", "لم يضف شيء بعد.")}
+              />
+            <FieldError message={ctaErrors.title_ar} />
+            </div>
+          )}
 
           {/* Columns list */}
           {columns.map((col) => {
@@ -895,20 +1274,10 @@ export default function FooterCms() {
 
                   <div className="cms-footer-card-actions">
                     <span className="cms-footer-order-label">{t("cms.footer.order")}</span>
-                    <input
-                      type="number"
-                      className="cms-footer-input-number"
+                    <OrderBox
                       value={col.order}
-                      aria-label={t("cms.footer.order")}
-                      onChange={async (e) => {
-                        try {
-                          await api.patch(API_PATHS.cms.column(col.id), { order: e.target.value });
-                          toast.success(t("cms.footer.order_updated"));
-                          loadData();
-                        } catch {
-                          toast.error(t("cms.footer.column_save_failed"));
-                        }
-                      }}
+                      label={`${t("cms.footer.order")} — ${isAr ? col.title_ar : col.title_en}`}
+                      onCommit={(next) => handleColumnOrderCommit(col, next)}
                     />
                     <Editbtn
                       onClick={() => {
@@ -983,6 +1352,15 @@ export default function FooterCms() {
               </div>
             )}
 
+            <DraftNotice
+              draft={ctaDraft.draft}
+              onRestore={() => {
+                const stored = ctaDraft.restore();
+                if (stored) setCtaForm({ ...EMPTY_CTA, ...stored });
+              }}
+              onDiscard={ctaDraft.discard}
+            />
+
             <form onSubmit={submitCta}>
               <div className="cms-footer-form-section">
                 {/* Row 1: Title AR + EN */}
@@ -994,9 +1372,11 @@ export default function FooterCms() {
                       required
                       placeholder={t("cms.footer.title_ar_placeholder")}
                       value={ctaForm.title_ar}
-                      onChange={(e) => setCtaForm({ ...ctaForm, title_ar: e.target.value })}
+                      data-field="title_ar"
+                      onChange={(e) => setCta({ title_ar: e.target.value })}
                       dir="rtl"
                     />
+                  <FieldError message={ctaErrors.title_en} />
                   </div>
                   <div className="cms-footer-form-group">
                     <label className="cms-footer-label">{t("cms.footer.title_en")}</label>
@@ -1005,8 +1385,10 @@ export default function FooterCms() {
                       required
                       placeholder={t("cms.footer.title_en_placeholder")}
                       value={ctaForm.title_en}
-                      onChange={(e) => setCtaForm({ ...ctaForm, title_en: e.target.value })}
+                      data-field="title_en"
+                      onChange={(e) => setCta({ title_en: e.target.value })}
                     />
+                  <FieldError message={ctaErrors.order} />
                   </div>
                 </div>
 
@@ -1018,9 +1400,11 @@ export default function FooterCms() {
                       className="cms-footer-input"
                       placeholder={t("cms.footer.desc_ar_placeholder")}
                       value={ctaForm.description_ar}
-                      onChange={(e) => setCtaForm({ ...ctaForm, description_ar: e.target.value })}
+                      data-field="description_ar"
+                      onChange={(e) => setCta({ description_ar: e.target.value })}
                       dir="rtl"
                     />
+                  <FieldError message={ctaErrors.description_ar} />
                   </div>
                   <div className="cms-footer-form-group">
                     <label className="cms-footer-label">{t("cms.footer.desc_en")}</label>
@@ -1028,8 +1412,10 @@ export default function FooterCms() {
                       className="cms-footer-input"
                       placeholder={t("cms.footer.desc_en_placeholder")}
                       value={ctaForm.description_en}
-                      onChange={(e) => setCtaForm({ ...ctaForm, description_en: e.target.value })}
+                      data-field="description_en"
+                      onChange={(e) => setCta({ description_en: e.target.value })}
                     />
+                  <FieldError message={ctaErrors.description_en} />
                   </div>
                 </div>
 
@@ -1044,8 +1430,9 @@ export default function FooterCms() {
                       className="cms-footer-input"
                       placeholder="/contact"
                       value={ctaForm.url}
+                      data-field="url"
                       disabled={!!ctaForm.page}
-                      onChange={(e) => setCtaForm({ ...ctaForm, url: e.target.value, page: "" })}
+                      onChange={(e) => setCta({ url: e.target.value, page: "" })}
                     />
                   </div>
                   <div className="cms-footer-form-group">
@@ -1053,8 +1440,9 @@ export default function FooterCms() {
                     <select
                       className="cms-footer-select"
                       value={ctaForm.page}
+                      data-field="page"
                       disabled={!!ctaForm.url}
-                      onChange={(e) => setCtaForm({ ...ctaForm, page: e.target.value, url: "" })}
+                      onChange={(e) => setCta({ page: e.target.value, url: "" })}
                     >
                       <option value="">{t("cms.footer.select_page_option")}</option>
                       {pages.map((p) => (
@@ -1063,6 +1451,7 @@ export default function FooterCms() {
                         </option>
                       ))}
                     </select>
+                  <FieldError message={ctaErrors.page} />
                   </div>
                 </div>
 
@@ -1075,7 +1464,8 @@ export default function FooterCms() {
                       type="number"
                       placeholder="0"
                       value={ctaForm.order}
-                      onChange={(e) => setCtaForm({ ...ctaForm, order: e.target.value })}
+                      data-field="order"
+                      onChange={(e) => setCta({ order: e.target.value })}
                     />
                   </div>
                   <div className="cms-footer-form-group cms-footer-form-group--checkbox">
@@ -1084,7 +1474,7 @@ export default function FooterCms() {
                         type="checkbox"
                         className="cms-footer-checkbox"
                         checked={ctaForm.is_active}
-                        onChange={(e) => setCtaForm({ ...ctaForm, is_active: e.target.checked })}
+                        onChange={(e) => setCta({ is_active: e.target.checked })}
                       />
                       <span className="cms-footer-checkbox-text">{t("cms.footer.active")}</span>
                     </label>
@@ -1092,7 +1482,10 @@ export default function FooterCms() {
                 </div>
               </div>
 
+              <FormError message={ctaFormError} />
+
               <div className="cms-footer-form-actions">
+                <PendingNote dirty={ctaDirty} />
                 <button
                   type="submit"
                   className="cms-footer-btn-primary"
@@ -1187,6 +1580,15 @@ export default function FooterCms() {
               </div>
             </div>
 
+            <DraftNotice
+              draft={settingsDraft.draft}
+              onRestore={() => {
+                const stored = settingsDraft.restore();
+                if (stored) setSettingsForm((current) => ({ ...current, ...stored }));
+              }}
+              onDiscard={settingsDraft.discard}
+            />
+
             <form onSubmit={submitFooterSettings}>
               <div className="cms-footer-form-section">
                 {/* Newsletter section */}
@@ -1198,9 +1600,11 @@ export default function FooterCms() {
                       className="cms-footer-input"
                       placeholder={t("cms.footer.newsletter_title_ar_placeholder")}
                       value={settingsForm.newsletter_title_ar}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, newsletter_title_ar: e.target.value })}
+                      data-field="newsletter_title_ar"
+                      onChange={(e) => setSetting({ newsletter_title_ar: e.target.value })}
                       dir="rtl"
                     />
+                  <FieldError message={settingsErrors.newsletter_title_ar} />
                   </div>
                   <div className="cms-footer-form-group">
                     <label className="cms-footer-label">{t("cms.footer.title_en")}</label>
@@ -1208,8 +1612,10 @@ export default function FooterCms() {
                       className="cms-footer-input"
                       placeholder={t("cms.footer.newsletter_title_en_placeholder")}
                       value={settingsForm.newsletter_title_en}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, newsletter_title_en: e.target.value })}
+                      data-field="newsletter_title_en"
+                      onChange={(e) => setSetting({ newsletter_title_en: e.target.value })}
                     />
+                  <FieldError message={settingsErrors.newsletter_title_en} />
                   </div>
                 </div>
 
@@ -1227,9 +1633,11 @@ export default function FooterCms() {
                       className="cms-footer-input"
                       placeholder={t("cms.footer.copyright_ar_placeholder")}
                       value={settingsForm.copyright_ar}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, copyright_ar: e.target.value })}
+                      data-field="copyright_ar"
+                      onChange={(e) => setSetting({ copyright_ar: e.target.value })}
                       dir="rtl"
                     />
+                  <FieldError message={settingsErrors.copyright_ar} />
                   </div>
                   <div className="cms-footer-form-group">
                     <label className="cms-footer-label">{t("cms.footer.title_en")}</label>
@@ -1237,8 +1645,10 @@ export default function FooterCms() {
                       className="cms-footer-input"
                       placeholder={t("cms.footer.copyright_en_placeholder")}
                       value={settingsForm.copyright_en}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, copyright_en: e.target.value })}
+                      data-field="copyright_en"
+                      onChange={(e) => setSetting({ copyright_en: e.target.value })}
                     />
+                  <FieldError message={settingsErrors.copyright_en} />
                   </div>
                 </div>
 
@@ -1264,7 +1674,7 @@ export default function FooterCms() {
                       type="file"
                       accept="image/*"
                       className="cms-footer-input-file"
-                      onChange={(e) => setSettingsForm({ ...settingsForm, logo_ar: e.target.files[0] || null })}
+                      onChange={(e) => setSetting({ logo_ar: e.target.files[0] || null })}
                     />
                   </div>
 
@@ -1282,7 +1692,7 @@ export default function FooterCms() {
                       type="file"
                       accept="image/*"
                       className="cms-footer-input-file"
-                      onChange={(e) => setSettingsForm({ ...settingsForm, logo_en: e.target.files[0] || null })}
+                      onChange={(e) => setSetting({ logo_en: e.target.files[0] || null })}
                     />
                   </div>
 
@@ -1300,13 +1710,16 @@ export default function FooterCms() {
                       type="file"
                       accept="image/*"
                       className="cms-footer-input-file"
-                      onChange={(e) => setSettingsForm({ ...settingsForm, vat_logo: e.target.files[0] || null })}
+                      onChange={(e) => setSetting({ vat_logo: e.target.files[0] || null })}
                     />
                   </div>
                 </div>
               </div>
 
+              <FormError message={settingsFormError} />
+
               <div className="cms-footer-form-actions">
+                <PendingNote dirty={settingsDirty} />
                 <button
                   type="submit"
                   className="cms-footer-btn-primary"
